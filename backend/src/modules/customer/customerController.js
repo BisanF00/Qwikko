@@ -1,6 +1,6 @@
 const customerService = require("./customerService");
-const customerModel = require("./customerModel");
 const { validationResult } = require("express-validator");
+const customerModel = require("./customerModel");
 
 /**
  * @module CustomerController
@@ -92,7 +92,7 @@ exports.fetchStoreDetails = async function (req, res) {
 exports.postOrderFromCart = async function (req, res) {
   try {
     const userId = req.user.id;
-    const { cart_id, address } = req.body;
+    const { cart_id, address, paymentMethod, paymentData } = req.body;
 
     if (!cart_id || typeof cart_id !== "number") {
       return res.status(400).json({ error: "cart_id must be a valid number" });
@@ -103,11 +103,25 @@ exports.postOrderFromCart = async function (req, res) {
         error: "Address must include at least address_line1 and city",
       });
     }
-
-    const order = await customerModel.placeOrderFromCart(userId, cart_id, address);
+    const normalizedPaymentData = {
+      transactionId: paymentData.transactionId || paymentData.transaction_id || null,
+      card_last4: paymentData.card_last4 || null,
+      card_brand: paymentData.card_brand || null,
+      expiry_month: paymentData.expiry_month || null,
+      expiry_year: paymentData.expiry_year || null,
+    };
+    // ينفذ دالة الموديل لإنشاء الأوردر + تسجيل الدفع
+    const order = await customerModel.placeOrderFromCart({
+      userId,
+      cartId: cart_id,
+      address,
+      paymentMethod,  // "cod" أو "paypal"/"credit_card"
+      paymentData: normalizedPaymentData, 
+    });
+        console.log("checkout req.body:", req.body);
 
     res.status(201).json({
-      message: "Order placed successfully (COD)",
+      message: `Order placed successfully (${paymentMethod.toUpperCase()})`,
       order,
     });
   } catch (err) {
@@ -179,21 +193,6 @@ exports.trackOrder = async function (req, res) {
 };
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * @function getAllCarts
  * @desc Retrieve all carts for the authenticated customer.
@@ -256,8 +255,6 @@ exports.getCartById = async (req, res) => {
 exports.createCart = async (req, res) => {
   try {
     let cart;
-    console.log("CustomerId:", req.customerId, "GuestToken:", req.guestToken);
-
     if (req.customerId && typeof req.customerId === "number") {
       cart = await customerService.createCartForUser(req.customerId);
     } else if (req.guestToken) {
@@ -272,10 +269,6 @@ exports.createCart = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-
-
-
 
 /**
  * @function updateCart
@@ -358,6 +351,9 @@ exports.addItem = async (req, res) => {
     const item = await customerService.addItem(cart_id, product_id, quantity, variant);
     res.status(201).json(item);
   } catch (err) {
+    if (err.message.includes('Cannot add')) {
+      return res.status(400).json({ message: err.message });
+    }
     console.error("Error adding item:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
@@ -418,33 +414,6 @@ exports.deleteItem = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * @function getAllProducts
  * @desc Get all products with optional filters, pagination, and search.
@@ -458,7 +427,7 @@ exports.deleteItem = async (req, res) => {
  */
 exports.getAllProducts = async (req, res) => {
   try {
-    const { search, categoryId, page = 1, limit = 10 } = req.query;
+    const { search, categoryId, page = 1, limit = 100 } = req.query;
 
     const filters = {
       search: search || null,
@@ -467,7 +436,7 @@ exports.getAllProducts = async (req, res) => {
       limit: parseInt(limit),
     };
 
-    const result = await customerModel.getAllProducts(filters);
+    const result = await customerService.getAllProducts(filters);
     return res.json(result);
   } catch (err) {
     console.error("Get products error:", err);
@@ -522,5 +491,126 @@ exports.getOrders  = async (req, res) => {
   } catch (err) {
     console.error('Error fetching orders:', err);
     res.status(500).json({ error: 'Error fetching orders' });
+  }
+};
+
+exports.getStoreProducts = async (req, res) => {
+  try {
+    const storeId = req.params.id;
+    const products = await customerModel.getVendorProducts(storeId);
+
+    res.json({ success: true, data: products });
+  } catch (err) {
+    console.error("Error fetching store products:", err);
+    res.status(500).json({ success: false, message: "Error fetching products" });
+  }
+};
+
+
+exports.updatePaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payment_status } = req.body;
+
+    if (!payment_status) {
+      return res.status(400).json({ message: "payment_status is required" });
+    }
+
+    const order = await customerModel.order.updatePaymentStatus(id, payment_status);
+    res.json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+exports.getProductsWithSorting = async (req, res) => {
+  try {
+    const { sort } = req.query; // price_asc, price_desc, most_sold, created_at, stock_quantity, ...
+
+    const products = await customerService.getProductsWithSorting(sort);
+    res.json(products);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+
+exports.paymentController = {
+  getUserPayments: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const payments = await customerService.paymentService.getUserPayments(userId);
+      res.json(payments);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  createPayment: async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      order_id,
+      payment_method,
+      amount,
+      status,
+      transaction_id,
+      card_last4,
+      card_brand,
+      expiry_month,
+      expiry_year,
+      paypal_email,
+      paypal_name
+    } = req.body;
+
+    const payment = await customerService.paymentService.createPayment({
+      order_id,
+      user_id: userId,
+      payment_method,
+      amount,
+      status: status || (payment_method === "paypal" ? "paid" : "pending"),
+      transaction_id: transaction_id || null,
+      paypal_email: paypal_email || null,
+      paypal_name: paypal_name || null,
+      card_last4: card_last4 || null,
+      card_brand: card_brand || null,
+      expiry_month: expiry_month || null,
+      expiry_year: expiry_year || null,
+    });
+
+    res.status(201).json(payment);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+},
+
+
+
+  deletePayment: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const paymentId = parseInt(req.params.id);
+      const deleted = await customerService.paymentService.deletePayment(userId, paymentId);
+      res.json(deleted);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+};
+
+// customerController.js
+exports.reorder = async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const userId = req.user.id; // بعد middleware auth
+    const newCart = await customerService.createCartFromOrder(orderId, userId);
+    res.json(newCart);
+  } catch (err) {
+    console.error("Reorder failed:", err);
+    res.status(500).json({ error: err.message });
   }
 };

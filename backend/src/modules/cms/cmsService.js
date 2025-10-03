@@ -22,6 +22,7 @@ exports.listCMS = async (type, title) => {
   return await CMSModel.getAllCMS(type, title);
 };
 
+
 /**
  * @function createCMS
  * @desc Creates a new CMS page or banner.
