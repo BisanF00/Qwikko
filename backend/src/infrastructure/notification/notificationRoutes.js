@@ -17,7 +17,7 @@ const pool = require("../../config/db");
  * @body {string} [type="general"] - Notification type/category
  * @returns {object} success status and additional info (e.g., count of users notified)
  */
-router.post("/", protect, controller.sendNotification);
+router.post("/", protect,authorizeRole("admin"), controller.sendNotification);
 
 /**
  * @route GET /api/notifications
@@ -73,6 +73,40 @@ router.post("/send-test", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
+=======
+
+router.post("/mark-read", async (req, res) => {
+  console.log("POST /mark-read called"); // بداية الطلب
+
+  const { ids } = req.body; // array of notification ids
+  console.log("Received IDs:", ids);
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    console.warn("No IDs provided or not an array");
+    return res.status(400).json({ error: "No IDs provided" });
+  }
+
+  try {
+    const query = `
+      UPDATE notifications
+      SET read_status = true, updated_at = NOW()
+      WHERE id = ANY($1::int[])
+      RETURNING *;
+    `;
+    console.log("Running query:", query, "with ids:", ids);
+
+    const result = await pool.query(query, [ids]);
+    console.log("Query result:", result.rowCount, result.rows);
+
+    res.json({ updated: result.rowCount, notifications: result.rows });
+  } catch (err) {
+    console.error("Error marking notifications as read:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+>>>>>>> origin/develop
 router.get("/unread-count", protect, async (req, res) => {
   const userId = req.user.id; // افترض أن middleware للتحقق موجود
   try {

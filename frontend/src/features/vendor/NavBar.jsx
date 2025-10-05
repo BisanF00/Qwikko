@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaBars, FaBell, FaRegUserCircle, FaSignOutAlt } from "react-icons/fa";
 import { FiChevronDown } from "react-icons/fi";
-import { fetchNotifications, fetchUnreadCount } from "./VendorAPI";
+import { fetchNotifications, fetchUnreadCount } from "./VendorAPI2";
 
 export default function VendorNavbar() {
   const navigate = useNavigate();

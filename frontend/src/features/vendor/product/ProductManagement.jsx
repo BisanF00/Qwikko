@@ -6,7 +6,7 @@ import {
   deleteProduct,
   fetchCategories,
   updateProduct,
-} from "../VendorAPI";
+} from "../VendorAPI2";
 import ProductForm from "./ProductForm";
 import ProductEdit from "./ProductEdit";
 import { Edit, Trash2 } from "lucide-react"; // أيقونات

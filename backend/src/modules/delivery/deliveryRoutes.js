@@ -20,7 +20,12 @@ router.get("/profile/", protect,authorizeRole('delivery'), DeliveryController.ge
  * @middleware protect - checks JWT token
  * @controller DeliveryController.updateCompanyProfile
  */
-router.put("/profile", protect,authorizeRole('delivery'), DeliveryController.updateCompanyProfile);
+router.patch(
+  "/profile",
+  protect,
+  authorizeRole("delivery"),
+  DeliveryController.updateCompanyProfile
+);
 
 /**
  * @route   PUT /orders/:id
@@ -95,6 +100,17 @@ router.put("/coverage/:id", protect,authorizeRole('delivery'), DeliveryControlle
  * @controller DeliveryController.deleteCoverage
  */
 router.delete("/coverage/:id", protect,authorizeRole('delivery'), DeliveryController.deleteCoverage);
+
+/**
+ * @route GET /reports
+ * @desc Get weekly report for authenticated delivery company
+ * @access Private (role: delivery)
+ */
+router.get("/reports", protect, authorizeRole("delivery"),DeliveryController.getDeliveryReport);
+
+
+router.put("/:id/paymentstatus", protect, authorizeRole("delivery"),DeliveryController.updatePaymentStatus);
+
 
 module.exports = router;
 

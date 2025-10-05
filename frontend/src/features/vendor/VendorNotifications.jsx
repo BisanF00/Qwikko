@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchNotifications } from "./VendorAPI";
+import { fetchNotifications } from "./VendorAPI2";
 
 export default function VendorNotifications() {
   const [notifications, setNotifications] = useState([]);

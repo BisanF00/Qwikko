@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { FaShoppingCart, FaUsers, FaChartLine, FaStore } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { getVendorLandingCMS } from "./VendorAPI";
+import { getVendorLandingCMS } from "./VendorAPI2";
 
 export default function VendorLanding() {
   const navigate = useNavigate();

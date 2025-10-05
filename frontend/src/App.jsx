@@ -1,75 +1,63 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { messaging, getToken, onMessage } from "./app/firebase-messaging";
-import VendorRoutes from "./features/vendor/routes";
+import React, { useEffect } from "react";
+import { Routes , Route, useLocation } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import CustomerRoutes from "./features/customer/routes/CustomerRoutes";
+import AdminRoutes from "./features/admin/routes/AdminRoutes";
+import DeliveryRoutes from "./features/delivery/routes/deliveryRoutes";
+import { fetchCurrentUser } from "./features/customer/customer/cartSlice";
+import { requestAndSaveToken, listenToMessages ,registerServiceWorker } from "./utlis/fcm"; 
 
-function App() {
-  const [fcmToken, setFcmToken] = useState("");
+
+const RouteSelector = () => {
+  const location = useLocation();
+
+  if (location.pathname.startsWith("/admin")) return <AdminRoutes />;
+  if (location.pathname.startsWith("/delivery")) return <DeliveryRoutes />;
+  if (location.pathname.startsWith("/customer")) return <CustomerRoutes />;
+  if (location.pathname.startsWith("/vendor")) return <VendorRoutes />;
+  return <GenralRoutes />;
+};
+
+
+const App = () => {
+  const dispatch = useDispatch();
+  const token = useSelector((state) => state.customerAuth.token);
+  
+  useEffect(() => {
+  const guestCookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("guest_token="));
+
+  if (guestCookie && !localStorage.getItem("guest_token")) {
+    const token = guestCookie.split("=")[1];
+    localStorage.setItem("guest_token", token);
+    console.log("✅ Guest token saved in localStorage:", token);
+  }
+}, []);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((registration) => {
-          Notification.requestPermission().then((permission) => {
-            if (permission !== "granted") return;
-
-            getToken(messaging, {
-              vapidKey:
-                "BLY_cpu5gN9scFU7TMhCd-RMC_meMwCVVry4a97ZPRoDDMYiNztIMRz9i8CEX95_0XNeBk7FMtY0VPyQ-dm2zCU",
-              serviceWorkerRegistration: registration,
-            })
-              .then((token) => {
-                console.log("FCM Token:", token);
-                setFcmToken(token);
-              })
-              .catch(console.error);
-
-            onMessage(messaging, (payload) => {
-              console.log("Message received:", payload);
-              if (payload.notification) {
-                new Notification(payload.notification.title, {
-                  body: payload.notification.body,
-                  icon: "/favicon.ico",
-                });
-              }
-            });
-          });
-        })
-        .catch(console.error);
+    if (token) {
+      dispatch(fetchCurrentUser());
+      registerServiceWorker().then(() => {
+      requestAndSaveToken(token);
+    });
+      listenToMessages((payload) => {
+      console.log("Foreground notification:", payload);
+      if (payload.notification) {
+        new Notification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: "/favicon.ico"
+        });
+      }
+    });
     }
-  }, []);
-
-  const sendTestNotification = async () => {
-    try {
-      const res = await fetch("http://localhost:3000/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: 1,
-          title: "Test Notification",
-          message: "Hello from backend",
-          type: "test",
-        }),
-      });
-      const data = await res.json();
-      console.log(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  }, [token, dispatch]);
 
   return (
-    <BrowserRouter>
-      <div>
-
-        {/* الراوتات الخاصة بالـ Vendor */}
-        <Routes>
-          <Route path="/*" element={<VendorRoutes />} />
-        </Routes>
-      </div>
-    </BrowserRouter>
+    <Router>
+      <RouteSelector />
+    </Router>
   );
-}
 
+};
 export default App;

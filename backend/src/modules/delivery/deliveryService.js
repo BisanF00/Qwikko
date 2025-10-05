@@ -88,6 +88,7 @@ exports.updateCoverageArea = async (id, user_id, data) => {
 exports.deleteCoverageArea = async (userId, areasToRemove) => {
   return await DeliveryModel.deleteCoverageAreas(userId, areasToRemove);
 };
+
 /**
  * Get coverage areas for company by userId
  * @async
@@ -100,10 +101,71 @@ exports.getCoverageAreas = async (userId) => {
 
 /**
  * Get all orders for a delivery company
+ * Automatically updates order status to "accepted" if all order items are accepted.
  * @async
  * @param {number} companyId - Company ID
- * @returns {Promise<Array>} List of orders
+ * @returns {Promise<Array<Object>>} List of orders with updated statuses
  */
+
 exports.getCompanyOrders = async (companyId) => {
-  return await DeliveryModel.getOrdersByCompanyId(companyId);
+  const orders = await DeliveryModel.getOrdersByCompanyId(companyId);
+
+  // ✅ نمرّ على كل أوردر ونفحص الآيتيمز
+  for (const order of orders) {
+    const orderItems = await DeliveryModel.getOrderItems(order.id);
+
+    const allAccepted = orderItems.every(
+      (item) => item.vendor_status === "accepted"
+    );
+
+    // if (allAccepted && order.status !== "accepted") {
+    //   const updatedOrder = await DeliveryModel.updateStatus(
+    //     order.id,
+    //     "accepted"
+    //   );
+    //   order.status = updatedOrder.status; // نحدث القيمة في الذاكرة قبل الإرسال
+    //   order.updated_at = updatedOrder.updated_at;
+    // }
+  }
+
+  return orders;
 };
+
+
+/**
+ * Get weekly report via service layer
+ * @async
+ * @param {number} companyId - The delivery company ID
+ * @param {number} [days=7] - Number of days to include in the report
+ * @returns {Promise<Object>} Weekly report from the model
+ */
+exports.getWeeklyReport = async (companyId, days = 7) => {
+  return await DeliveryModel.getWeeklyReport(companyId, days);
+};
+
+/**
+ * Get all items for a specific order (Service layer)
+ * @async
+ * @function
+ * @param {number} orderId - The ID of the order to retrieve items for
+ * @returns {Promise<Array<Object>>} A list of order items
+ * @see DeliveryModel.getOrderItems
+ */
+exports.getOrderItems = async (orderId) => {
+  return await DeliveryModel.getOrderItems(orderId);
+};
+
+exports.checkAndUpdateAcceptedOrdersForCompany = async (orderId) => {
+  return await DeliveryModel.checkAndUpdateAcceptedOrdersForCompany(orderId);
+};
+
+exports.updatePaymentStatus = async (orderId, paymentStatus) => {
+  return await DeliveryModel.updatePaymentStatus(orderId, paymentStatus);
+};
+
+
+exports.getOrderById = async (orderId) => {
+  return await DeliveryModel.getOrderById(orderId);
+};
+
+

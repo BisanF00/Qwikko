@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerVendorAPI } from "../VendorAPI";
+import { registerVendorAPI } from "../VendorAPI2";
 import {
   FaShoppingBag,
   FaUser,

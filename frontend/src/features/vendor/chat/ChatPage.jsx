@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchConversations, fetchMessages, sendMessage } from "../VendorAPI";
+import { fetchConversations, fetchMessages, sendMessage } from "../VendorAPI2";
 import { getUserIdFromToken } from "./auth";
 
 const ChatPage = () => {

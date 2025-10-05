@@ -1,4 +1,4 @@
-const CMSModel = require('./cmsModel');
+const CMSModel = require("./cmsModel");
 
 /**
  * @module CMSService
@@ -18,9 +18,15 @@ const CMSModel = require('./cmsModel');
  * const cmsPages = await CMSService.listCMS('active');
  * console.log(cmsPages);
  */
-exports.listCMS = async (status) => {
-  return await CMSModel.getAllCMS(status);
+exports.listCMS = async (type, title) => {
+  return await CMSModel.getAllCMS(type, title);
 };
+
+
+exports.listCMSForAdmin = async () => {
+  return await CMSModel.getAllCMSForAdmin();
+};
+
 
 /**
  * @function createCMS
@@ -35,10 +41,10 @@ exports.listCMS = async (status) => {
  * @returns {Promise<Object>} The created CMS object
  *
  * @example
- * const newCMS = await CMSService.createCMS({ 
- *   title: 'Welcome Banner', 
- *   content: 'Homepage banner', 
- *   type: 'banner' 
+ * const newCMS = await CMSService.createCMS({
+ *   title: 'Welcome Banner',
+ *   content: 'Homepage banner',
+ *   type: 'banner'
  * });
  */
 exports.createCMS = async (data) => {
@@ -69,7 +75,7 @@ exports.createCMS = async (data) => {
  */
 exports.modifyCMS = async (id, data) => {
   const updated = await CMSModel.updateCMS(id, data);
-  if (!updated) throw new Error('CMS record not found');
+  if (!updated) throw new Error("CMS record not found");
   return updated;
 };
 
@@ -91,7 +97,7 @@ exports.modifyCMS = async (id, data) => {
  */
 exports.removeCMS = async (id) => {
   const deleted = await CMSModel.deleteCMS(id);
-  if (!deleted) throw new Error('CMS record not found');
+  if (!deleted) throw new Error("CMS record not found");
 };
 exports.listCMS = async (type, title) => {
   return await CMSModel.getAllCMS(type, title);

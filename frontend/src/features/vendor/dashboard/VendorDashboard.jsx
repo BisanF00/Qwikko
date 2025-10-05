@@ -1,6 +1,6 @@
 // Dashboard.jsx
 import React, { useEffect, useState } from "react";
-import { fetchOrders, fetchProducts } from "../VendorAPI";
+import { fetchOrders, fetchProducts } from "../VendorAPI2";
 import {
   DollarSign,
   ShoppingCart,

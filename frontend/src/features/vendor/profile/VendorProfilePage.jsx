@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchVendorProfile, updateVendorProfile } from "../VendorAPI";
+import { fetchVendorProfile, updateVendorProfile } from "../VendorAPI2";
 
 const VendorProfilePage = () => {
   const [profile, setProfile] = useState(null); // بيانات البروفايل
