@@ -1,78 +1,5 @@
-// import { useEffect, useState } from "react";
-// import { messaging, getToken, onMessage } from "./app/firebase-messaging";
-// import { useEffect, useState } from "react";
-// import { messaging, getToken, onMessage } from "./app/firebase-messaging";
-
-// function App() {
-//   const [fcmToken, setFcmToken] = useState("");
-
-//   useEffect(() => {
-//     if ("serviceWorker" in navigator) {
-//       navigator.serviceWorker
-//         .register("/firebase-messaging-sw.js")
-//         .then(registration => {
-//           // طلب إذن الإشعارات
-//           Notification.requestPermission().then(permission => {
-//             if (permission !== "granted") return;
-
-//             // جلب FCM token
-//             getToken(messaging, {
-//               vapidKey: "BLY_cpu5gN9scFU7TMhCd-RMC_meMwCVVry4a97ZPRoDDMYiNztIMRz9i8CEX95_0XNeBk7FMtY0VPyQ-dm2zCU",
-//               serviceWorkerRegistration: registration
-//             })
-//               .then(token => {
-//                 console.log("FCM Token:", token);
-//                 setFcmToken(token);
-//               })
-//               .catch(console.error);
-
-//             // استقبال الرسائل عند الصفحة المفتوحة
-//             onMessage(messaging, payload => {
-//               console.log("Message received:", payload);
-//               if (payload.notification) {
-//                 new Notification(payload.notification.title, {
-//                   body: payload.notification.body,
-//                   icon: "/favicon.ico"
-//                 });
-//               }
-//             });
-//           });
-//         })
-//         .catch(console.error);
-//     }
-//   }, []);
-
-//   const sendTestNotification = async () => {
-//   try {
-//     const res = await fetch("http://localhost:3000/api/notifications", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({
-//         userId: 1, // user id
-//         title: "Test Notification",
-//         message: "Hello from backend",
-//         type: "test"
-//       })
-//     });
-//     const data = await res.json();
-//     console.log(data);
-//   } catch (err) {
-//     console.error(err);
-//   }
-// };
-
-//   return (
-//     <div>
-//       <h1>React + FCM Test</h1>
-//       <button onClick={sendTestNotification}>Send Test Notification</button>
-//     </div>
-//   );
-// }
-
-// export default App;// App.jsx
-
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import MainLayout from "./features/customer/customer/components/layout/MainLayout";
 
@@ -84,8 +11,6 @@ import OrderDetailsPage from "./features/customer/customer/pages/OrderDetailsPag
 import StorePage from "./features/customer/customer/pages/StorePage";
 import CartListPage from "./features/customer/customer/pages/CartListPage";
 import CartDetailPage from "./features/customer/customer/pages/CartDetailPage";
-
-// ✅ استدعاء الـ thunk لجلب المستخدم
 import { fetchCurrentUser } from "./features/customer/customer/cartSlice";
 import StoresPage from "./features/customer/customer/pages/StoresPage";
 import TrackOrderPage from "./features/customer/customer/pages/TrackOrderPage";
@@ -110,7 +35,7 @@ import AboutPage from "./features/customer/aboutPage/about";
 
 const AppRoutes = () => {
   const token = useSelector((state) => state.customerAuth.token);
-  const location = useLocation();
+  // const location = useLocation();
 
   // if (!token && !location.pathname.startsWith("/auth")) {
   //   return <Navigate to="/auth/login" replace />;
@@ -222,79 +147,40 @@ const AppRoutes = () => {
 const App = () => {
   const dispatch = useDispatch();
   const token = useSelector((state) => state.customerAuth.token);
-  // function App() {
-  //   const [fcmToken, setFcmToken] = useState("");
 
-  //   useEffect(() => {
-  //     if ("serviceWorker" in navigator) {
-  //       navigator.serviceWorker
-  //         .register("/firebase-messaging-sw.js")
-  //         .then(registration => {
-  //           // طلب إذن الإشعارات
-  //           Notification.requestPermission().then(permission => {
-  //             if (permission !== "granted") return;
 
-  //             // جلب FCM token
-  //             getToken(messaging, {
-  //               vapidKey: "BLY_cpu5gN9scFU7TMhCd-RMC_meMwCVVry4a97ZPRoDDMYiNztIMRz9i8CEX95_0XNeBk7FMtY0VPyQ-dm2zCU",
-  //               serviceWorkerRegistration: registration
-  //             })
-  //               .then(token => {
-  //                 console.log("FCM Token:", token);
-  //                 setFcmToken(token);
-  //               })
-  //               .catch(console.error);
+  useEffect(() => {
+  // نحاول نسحب guest_token من الكوكيز
+  const guestCookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("guest_token="));
 
-  //             // استقبال الرسائل عند الصفحة المفتوحة
-  //             onMessage(messaging, payload => {
-  //               console.log("Message received:", payload);
-  //               if (payload.notification) {
-  //                 new Notification(payload.notification.title, {
-  //                   body: payload.notification.body,
-  //                   icon: "/favicon.ico"
-  //                 });
-  //               }
-  //             });
-  //           });
-  //         })
-  //         .catch(console.error);
-  //     }
-  //   }, []);
-
-  //   const sendTestNotification = async () => {
-  //   try {
-  //     const res = await fetch("http://localhost:3000/api/notifications", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         userId: 1, // user id
-  //         title: "Test Notification",
-  //         message: "Hello from backend",
-  //         type: "test"
-  //       })
-  //     });
-  //     const data = await res.json();
-  //     console.log(data);
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
-
-  //   return (
-  //     <div>
-  //       <h1>React + FCM Test</h1>
-  //       <button onClick={sendTestNotification}>Send Test Notification</button>
-  //     </div>
-  //   );
-  // }
-
+  if (guestCookie && !localStorage.getItem("guest_token")) {
+    const token = guestCookie.split("=")[1];
+    localStorage.setItem("guest_token", token);
+    console.log("✅ Guest token saved in localStorage:", token);
+  }
+}, []);
 
   useEffect(() => {
     if (token) {
       dispatch(fetchCurrentUser());
+      registerServiceWorker().then(() => {
+      requestAndSaveToken(token);
+    });
+      listenToMessages((payload) => {
+      console.log("Foreground notification:", payload);
+      if (payload.notification) {
+        new Notification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: "/favicon.ico"
+        });
+      }
+    });
     }
   }, [token, dispatch]);
-
+  
+  
   return <AppRoutes />;
 };
 

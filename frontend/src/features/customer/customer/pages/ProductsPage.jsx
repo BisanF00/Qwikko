@@ -14,9 +14,14 @@ import { GetWishlist } from "../../wishlist/wishlistApi";
 
 const ProductsPage = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
+
   const currentCart = useSelector((state) => state.cart.currentCart);
   const tempCartId = useSelector((state) => state.cart.tempCartId);
   const cartIdToUse = tempCartId || currentCart?.id;
+  const userId = useSelector((state) => state.cart.user?.id);
+
+  const initialCartId = location.state?.cartId;
 
   const {
     items: products = [],
@@ -25,6 +30,10 @@ const ProductsPage = () => {
     searchQuery,
     sortBy,
   } = useSelector((state) => state.products);
+    currentPage,
+    itemsPerPage,
+  } = useSelector((state) => state.products);
+
   const { items: categories = [], selectedCategories = [] } = useSelector(
     (state) => state.categories
   );
@@ -53,6 +62,7 @@ const ProductsPage = () => {
     fetchWishlistData();
   }, []);
 
+  // Fetch products and categories
   useEffect(() => {
     if (sortBy && sortBy !== "default") {
       dispatch(fetchProductsWithSorting({ sort: sortBy }));
@@ -61,7 +71,7 @@ const ProductsPage = () => {
     }
     // dispatch(fetchCart());
     dispatch(fetchCategories());
-  }, [dispatch, sortBy]);
+  }, [dispatch, sortBy, searchQuery]);
 
   const handleSortChange = (e) => {
     const selectedSort = e.target.value;
@@ -81,6 +91,24 @@ const ProductsPage = () => {
       // ✅ Add item always, backend يتأكد إذا كان موجود أو لا
       await customerAPI.addItem({
         cartId,
+      let cart = currentCart;
+      const guestToken = tempCartId || localStorage.getItem("guest_token");
+
+      // جرب cart الحالي
+      if (!cart) {
+        cart = await customerAPI.getOrCreateCart(initialCartId, userId, guestToken);
+        dispatch(setCurrentCart(cart));
+      }
+
+      // إذا ما في cart، أنشئ جديد
+      if (!cart?.id) {
+        cart = await customerAPI.getOrCreateCart(null, userId, guestToken);
+        dispatch(setCurrentCart(cart));
+      }
+
+      // أضف المنتج
+      await customerAPI.addItem({
+        cartId: cart.id,
         product,
         quantity,
         variant: product.variant || {},
@@ -88,6 +116,8 @@ const ProductsPage = () => {
 
       dispatch(fetchCart(cartId));
       alert("added to cart");
+      dispatch(fetchCart(cart.id));
+      alert("✅ Added to cart");
     } catch (err) {
       const msg = err.response?.data?.message || err.message;
       alert(msg);
@@ -96,9 +126,9 @@ const ProductsPage = () => {
 
   const handleToggleCategory = (category) => {
     dispatch(toggleCategory(category));
+    dispatch(setCurrentPage(1));
   };
 
-  // فلترة المنتجات حسب الكاتيجوريز و search query
   const filteredProducts = products
     .filter((p) => p.quantity > 0)
     .filter((p) =>
@@ -109,6 +139,11 @@ const ProductsPage = () => {
     .filter((p) =>
       searchQuery ? p.name.toLowerCase().includes(searchQuery) : true
     );
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   if (status === "loading") {
     return (
@@ -132,7 +167,7 @@ const ProductsPage = () => {
         Our Products {searchQuery && `(Results for "${searchQuery}")`}
       </h1>
 
-      {/* Sorting dropdown */}
+      {/* Sorting */}
       <div className="flex justify-end mb-4">
         <select
           className="border p-2 rounded"
@@ -146,6 +181,7 @@ const ProductsPage = () => {
         </select>
       </div>
 
+      {/* Categories */}
       <CategoryList
         categories={categories}
         selectedCategories={selectedCategories}
@@ -173,9 +209,39 @@ const ProductsPage = () => {
               />
             );
           })}
+      {/* Products grid */}
+      {paginatedProducts.length === 0 ? (
+        <p className="text-center text-gray-600 mt-10">No products found.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {paginatedProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAddToCart={handleAddToCart}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6 gap-2">
+          {Array.from({ length: totalPages }).map((_, idx) => (
+            <button
+              key={idx}
+              className={`px-3 py-1 border rounded ${
+                currentPage === idx + 1 ? "bg-gray-300" : ""
+              }`}
+              onClick={() => dispatch(setCurrentPage(idx + 1))}
+            >
+              {idx + 1}
+            </button>
+          ))}
         </div>
       )}
     </div>
   );
 };
+
 export default ProductsPage;
