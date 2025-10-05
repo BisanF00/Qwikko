@@ -80,14 +80,30 @@ exports.getVendorByUserId = async (userId) => {
 
 exports.getVendorProducts = async (vendorId) => {
   const query = `
-    SELECT *
-    FROM products
-    WHERE vendor_id = $1
-    ORDER BY created_at DESC
+    SELECT 
+      p.*,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', pi.id,
+            'image_url', pi.image_url
+          )
+        ) FILTER (WHERE pi.id IS NOT NULL), 
+        '[]'
+      ) AS images
+    FROM products p
+    LEFT JOIN product_images pi ON p.id = pi.product_id
+    WHERE p.vendor_id = $1
+      AND (p.is_deleted = FALSE OR p.is_deleted IS NULL)
+    GROUP BY p.id
+    ORDER BY p.created_at DESC
   `;
+
   const { rows } = await pool.query(query, [vendorId]);
   return rows;
 };
+
+
 
 /**
  * Get all orders for a specific vendor.
@@ -107,6 +123,7 @@ exports.getVendorOrders = async (vendorId) => {
       oi.id AS item_id,
       oi.quantity,
       oi.price,
+      oi.vendor_status,
       p.name AS product_name,
       p.id AS product_id
     FROM orders o
@@ -169,37 +186,48 @@ exports.getProfile = async (userId) => {
  * @returns {Promise<Object>} Updated vendor profile record
  */
 exports.updateProfile = async (userId, profileData) => {
+  // فقط الحقول المسموحة
+  const allowedFields = ["store_name", "store_logo", "description", "address"];
+  
+  let setClause = [];
+  let values = [];
+  let idx = 1;
+
+  allowedFields.forEach((field) => {
+    if (profileData[field] !== undefined) {
+      setClause.push(`${field} = $${idx++}`);
+      values.push(profileData[field]);
+    }
+  });
+
+  // إضافة updated_at دائما
+  setClause.push(`updated_at = NOW()`);
+
+  // user_id
+  values.push(userId);
+
   const query = `
     UPDATE vendors
-    SET store_name = $1,
-        store_slug = $2,
-        store_logo = $3,
-        store_banner = $4,
-        description = $5,
-        status = $6,
-        contact_email = $7,
-        phone = $8,
-        address = $9,
-        social_links = $10,
-        updated_at = NOW()
-    WHERE user_id = $11
+    SET ${setClause.join(", ")}
+    WHERE user_id = $${idx}
     RETURNING *;
   `;
-
-  const values = [
-    profileData.store_name,
-    profileData.store_slug,
-    profileData.store_logo,
-    profileData.store_banner,
-    profileData.description,
-    profileData.status,
-    profileData.contact_email,
-    profileData.phone,
-    profileData.address,
-    profileData.social_links,
-    userId,
-  ];
 
   const { rows } = await pool.query(query, values);
   return rows[0];
 };
+
+/**
+ * Update vendor_status of a specific order item (per vendor).
+ *
+ * @async
+ * @function updateOrderItemStatus
+ * @param {number|string} itemId - Order item ID
+ * @param {string} status - New status (e.g., 'pending', 'shipped')
+ * @param {number|string} vendorId - The vendor who owns this product
+ * @returns {Promise<Object>} Updated order item record
+ */
+
+
+
+

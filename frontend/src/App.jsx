@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from "react-redux";
 import CustomerRoutes from "./features/customer/routes/CustomerRoutes";
 import AdminRoutes from "./features/admin/routes/AdminRoutes";
 import DeliveryRoutes from "./features/delivery/routes/deliveryRoutes";
+import { fetchCurrentUser } from "./features/customer/customer/cartSlice";
+import { requestAndSaveToken, listenToMessages ,registerServiceWorker } from "./utlis/fcm"; 
 
 
 const RouteSelector = () => {

@@ -60,16 +60,22 @@ exports.createProduct = async (req, res) => {
     const vendorId = vendorResult.rows[0].id;
 
     const now = new Date();
-    const productData = { ...req.body, vendor_id: vendorId, created_at: now, updated_at: now };
+    const productData = {
+      ...req.body,
+      vendor_id: vendorId,
+      created_at: now,
+      updated_at: now,
+    };
 
     const product = await productModel.insertProduct(productData);
 
-    res.status(201).json({ message: 'Product added!', product });
+    res.status(201).json({ message: 'Product added successfully!', product });
   } catch (err) {
     console.error('Product creation error:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
+
 
 
 /**
@@ -148,7 +154,7 @@ exports.deleteProduct = async (req, res) => {
     if (isNaN(productId)) 
       return res.status(400).json({ message: 'Invalid product ID' });
 
-    // 1️⃣ تحقق من أن الـuser هو Vendor
+    // 1️⃣ تحقق من أن المستخدم هو Vendor
     const vendorResult = await db.query(
       'SELECT id FROM vendors WHERE user_id = $1',
       [req.user.id]
@@ -159,6 +165,7 @@ exports.deleteProduct = async (req, res) => {
 
     const vendorId = vendorResult.rows[0].id;
 
+    // تحقق من أن المنتج موجود ومرتبط بهذا البائع
     const productCheck = await db.query(
       'SELECT id FROM products WHERE id = $1 AND vendor_id = $2',
       [productId, vendorId]
@@ -166,13 +173,19 @@ exports.deleteProduct = async (req, res) => {
 
     if (productCheck.rowCount === 0)
       return res.status(404).json({ message: 'Product not found or unauthorized' });
-    await productService.deleteProduct(productId, vendorId);
 
-    res.json({ message: 'Product deleted successfully' });
+    // 🔹 استخدام الـ model لعمل soft delete
+    const deletedProduct = await productService.deleteProduct(productId, vendorId);
+
+    res.json({
+      message: 'Product soft-deleted successfully',
+      product: deletedProduct // ترجع المنتج بعد التحديث
+    });
   } catch (err) {
     console.error('Delete product error:', err);
     res.status(500).json({ message: 'Error deleting product' });
   }
 };
+
 
 

@@ -96,4 +96,21 @@ exports.postChatMessage = async (req, res) => {
   }
 };
 
+exports.getConversations = async (req, res) => {
+  const currentUserId = parseInt(req.user?.id, 10);
+
+  if (isNaN(currentUserId)) {
+    return res.status(400).json({ message: "Invalid user ID" });
+  }
+
+  try {
+    const conversations = await chatService.getConversations(currentUserId);
+    res.json(conversations);
+  } catch (err) {
+    console.error("Error fetching conversations:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 

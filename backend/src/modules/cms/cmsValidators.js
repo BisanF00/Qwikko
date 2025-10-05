@@ -18,11 +18,21 @@ const { body, validationResult } = require("express-validator");
  * router.post('/cms', validateCMS, cmsController.createCMS);
  */
 exports.validateCMS = [
+<<<<<<< HEAD
+  body('title')
+    .notEmpty()
+    .withMessage('Landing Page'),
+
+ body('type')
+    .isIn(['page', 'banner', 'user', 'customer', 'vendor', 'delivery'])
+    .withMessage('Type must be one of: page, banner, user, customer, vendor, delivery'),
+=======
   body("title").notEmpty().withMessage("Title is required"),
 
   body("type")
     .isIn(["user", "customer", "vendor", "delivery"])
     .withMessage("Type must be one of: user, customer, vendor, delivery"),
+>>>>>>> origin/develop
 
   body("status")
     .optional()

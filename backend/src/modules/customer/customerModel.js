@@ -681,56 +681,59 @@ exports.createCartForGuest = async (guestToken) => {
  * @param {number} [param0.limit=10] - Items per page
  * @returns {Promise<Array>} - Array of product objects with images
  */
-exports.getAllProducts = async ({
-  search,
-  categoryId,
-  page = 1,
-  limit = 100,
-}) => {
-  try {
-    const offset = (page - 1) * limit;
-    const values = [limit, offset];
-    let idx = 3;
+exports.getAllProducts = async ({ search, categoryId, page, limit }) => {
+  try{
+    let baseQuery = `
+      SELECT 
+        p.*, 
+        v.store_name
+      FROM products p
+      LEFT JOIN vendors v ON p.vendor_id = v.id
+      WHERE (p.is_deleted = FALSE OR p.is_deleted IS NULL)
+    `;
+    const values = [];
+    let idx = 1;
 
-    let filterQuery = "";
     if (search) {
-      filterQuery += ` AND (p.name ILIKE $${idx} OR v.store_name ILIKE $${idx})`;
+      baseQuery += ` AND (p.name ILIKE $${idx} OR v.store_name ILIKE $${idx})`;
       values.push(`%${search}%`);
       idx++;
     }
+
     if (categoryId) {
-      filterQuery += ` AND p.category_id = $${idx}`;
+      baseQuery += ` AND p.category_id = $${idx}`;
       values.push(categoryId);
       idx++;
     }
 
-    const query = `
-      SELECT 
-        p.*,
-        v.store_name AS vendor_name, -- هنا نضيف اسم الفندور
-        COALESCE(
-          (
-            SELECT json_agg(pi.image_url::text ORDER BY pi.id)
-            FROM product_images pi
-            WHERE pi.product_id = p.id
-          )::jsonb,
-          '[]'::jsonb
-        ) AS images
-      FROM products p
-      LEFT JOIN vendors v ON v.id = p.vendor_id
-      WHERE 1=1
-      ${filterQuery}
-      ORDER BY p.created_at DESC
-      LIMIT $1 OFFSET $2
-    `;
+      const query = `
+        SELECT 
+          p.*,
+          v.store_name AS vendor_name, -- هنا نضيف اسم الفندور
+          COALESCE(
+            (
+              SELECT json_agg(pi.image_url::text ORDER BY pi.id)
+              FROM product_images pi
+              WHERE pi.product_id = p.id
+            )::jsonb,
+            '[]'::jsonb
+          ) AS images
+        FROM products p
+        LEFT JOIN vendors v ON v.id = p.vendor_id
+        WHERE 1=1
+        ${filterQuery}
+        ORDER BY p.created_at DESC
+        LIMIT $1 OFFSET $2
+      `;
 
-    const { rows } = await pool.query(query, values);
-    return rows;
+      const { rows } = await pool.query(query, values);
+      return rows;
   } catch (err) {
     console.error("Error in getAllProducts:", err);
     throw err;
   }
-};
+}
+
 
 /**
  * @function getCustomerOrders

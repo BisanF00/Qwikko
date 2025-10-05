@@ -1,3 +1,4 @@
+const pool = require("../../config/db");
 /**
  * ===============================
  * Vendor Service
@@ -128,4 +129,105 @@ exports.getProfile = async (userId) => {
  */
 exports.updateProfile = async (userId, profileData) => {
   return await vendorModel.updateProfile(userId, profileData);
+};
+
+
+
+/**
+ * Update vendor_status of a specific order item (per vendor).
+ * Allowed values: 'accepted', 'rejected'.
+ * If 'accepted' → decrease stock_quantity from products.
+ */
+exports.updateOrderItemStatus = async (itemId, status, userId) => {
+  if (!["accepted", "rejected"].includes(status)) {
+    throw new Error("Invalid status. Must be 'accepted' or 'rejected'.");
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1) Get vendor_id for the logged-in user
+    const vendorRes = await client.query(
+      `SELECT id AS vendor_id FROM vendors WHERE user_id = $1`,
+      [userId]
+    );
+    if (vendorRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      throw new Error("Vendor not found for this user");
+    }
+    const vendorId = vendorRes.rows[0].vendor_id;
+
+    // 2) Get order_item + product (lock row FOR UPDATE)
+    const itemQuery = `
+      SELECT oi.*, p.vendor_id, p.stock_quantity, p.name AS product_name
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.id = $1 AND p.vendor_id = $2
+      FOR UPDATE;
+    `;
+    const { rows } = await client.query(itemQuery, [itemId, vendorId]);
+    const item = rows[0];
+    if (!item) {
+      await client.query("ROLLBACK");
+      return null; // Not allowed to update this item
+    }
+
+    // 3) If accepted → decrease stock_quantity
+    if (status === "accepted") {
+      const newStock = item.stock_quantity - item.quantity;
+      if (newStock < 0) {
+        await client.query("ROLLBACK");
+        throw new Error("Not enough stock for this product");
+      }
+
+      await client.query(
+        `UPDATE products SET stock_quantity = $1, updated_at = NOW() WHERE id = $2`,
+        [newStock, item.product_id]
+      );
+    }
+
+    // 4) Update vendor_status in order_items
+    const updateQuery = `
+      UPDATE order_items
+      SET vendor_status = $1
+      WHERE id = $2
+      RETURNING *;
+    `;
+    const { rows: updated } = await client.query(updateQuery, [status, itemId]);
+
+    await client.query("COMMIT");
+    return updated[0];
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+exports.getVendorOrderItems = async (userId) => {
+  const client = await pool.connect();
+  try {
+    // جلب vendor_id حسب user_id
+    const vendorRes = await client.query(
+      `SELECT id AS vendor_id FROM vendors WHERE user_id = $1`,
+      [userId]
+    );
+    if (!vendorRes.rows.length) return [];
+    const vendorId = vendorRes.rows[0].vendor_id;
+
+    const itemsRes = await client.query(`
+      SELECT oi.id AS order_item_id, oi.order_id, oi.product_id, oi.quantity,
+             oi.vendor_status, p.name AS product_name
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE p.vendor_id = $1
+      ORDER BY oi.id DESC
+    `, [vendorId]);
+
+    return itemsRes.rows;
+  } finally {
+    client.release();
+  }
 };

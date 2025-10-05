@@ -1,5 +1,6 @@
 // src/modules/chat/chatService.js
 const ChatModel = require('./chatModel');
+const pool = require("../../config/db");
 const { saveToFirebase } = require('../../infrastructure/firebase');
 
 /**
@@ -42,3 +43,29 @@ exports.sendMessage = async (sender_id, receiver_id, message) => {
   await saveToFirebase(chatMessage); // Trigger real-time update in Firebase
   return chatMessage;
 };
+
+// chatService.js
+exports.getConversations = async (userId) => {
+  const { rows } = await pool.query(
+    `
+    SELECT DISTINCT ON (
+      LEAST(cm.sender_id, cm.receiver_id), GREATEST(cm.sender_id, cm.receiver_id)
+    )
+      cm.id,
+      cm.sender_id,
+      cm.receiver_id,
+      cm.message,
+      cm.created_at,
+      u1.name AS sender_name,
+      u2.name AS receiver_name
+    FROM chat_messages cm
+    JOIN users u1 ON cm.sender_id = u1.id
+    JOIN users u2 ON cm.receiver_id = u2.id
+    WHERE cm.sender_id = $1 OR cm.receiver_id = $1
+    ORDER BY LEAST(cm.sender_id, cm.receiver_id), GREATEST(cm.sender_id, cm.receiver_id), cm.created_at DESC
+    `,
+    [userId]
+  );
+  return rows;
+};
+

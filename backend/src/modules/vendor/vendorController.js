@@ -173,13 +173,71 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const updatedProfile = await vendorService.updateProfile(userId, req.body);
+
+    // فقط الحقول المسموح تعديلها
+    const allowedFields = ['store_name', 'address', 'description', 'store_logo'];
+    const profileData = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) profileData[field] = req.body[field];
+    });
+
+    const updatedProfile = await vendorService.updateProfile(userId, profileData);
 
     res.json({ success: true, data: updatedProfile });
   } catch (err) {
     console.error("Update vendor profile error:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "Error updating vendor profile" });
+    res.status(500).json({ success: false, message: "Error updating vendor profile" });
+  }
+};
+
+/**
+ * Update vendor_status for a specific order item.
+ * Only 'accepted' or 'rejected'.
+ */
+exports.updateOrderItemStatus = async (req, res) => {
+  try {
+    const { id } = req.params; // order_item id
+    const { status } = req.body;
+    const userId = req.user.id; // from JWT token
+
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be either accepted or rejected",
+      });
+    }
+
+    const updatedItem = await vendorService.updateOrderItemStatus(
+      id,
+      status,
+      userId
+    );
+
+    if (!updatedItem) {
+      return res.status(403).json({
+        success: false,
+        message: "Not allowed to update this item",
+      });
+    }
+
+    res.json({ success: true, data: updatedItem });
+  } catch (err) {
+    console.error("Update order item status error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Error updating order item status",
+    });
+  }
+};
+
+
+exports.getVendorOrderItems = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const items = await vendorService.getVendorOrderItems(userId);
+    res.json({ success: true, data: items });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Error fetching order items' });
   }
 };

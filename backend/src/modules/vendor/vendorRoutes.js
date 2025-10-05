@@ -80,6 +80,20 @@ router.get("/profile", protect,authorizeRole('vendor'), vendorController.getProf
  */
 router.put("/profile", protect,authorizeRole('vendor'), vendorController.updateProfile);
 
+/**
+ * @route PUT /vendors/order-items/:id/status
+ * @desc Update vendor_status for an order item (only for products owned by vendor)
+ * @access Protected (vendor)
+ */
+router.put(
+  "/order-items/:id/status",
+  protect,
+  authorizeRole("vendor"),
+  vendorController.updateOrderItemStatus
+);
+router.get('/order-items', protect, vendorController.getVendorOrderItems);
+
+
 module.exports = router;
 
 

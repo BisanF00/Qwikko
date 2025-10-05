@@ -154,3 +154,12 @@ exports.deleteCMS = async (req, res) => {
     }
   }
 };
+exports.getAllCMS = async (req, res) => {
+  try {
+    const { type, title } = req.query;
+    const cms = await cmsService.listCMS(type, title);
+    res.status(200).json(cms);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

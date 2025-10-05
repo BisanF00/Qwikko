@@ -115,3 +115,7 @@ exports.deleteCMS = async (id) => {
   const { rowCount } = await pool.query('DELETE FROM cms WHERE id=$1', [id]);
   return rowCount > 0;
 };
+exports.getAllCMS = async (type, title) => {
+  const { rows } = await pool.query(`SELECT content, image_url FROM cms WHERE type=$1 AND status='active' AND title=$2`, [type,title]);
+  return rows; 
+};

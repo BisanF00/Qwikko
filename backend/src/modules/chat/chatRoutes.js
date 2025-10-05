@@ -30,6 +30,7 @@ router.get('/', protect, chatController.getChatMessages);
  * @returns {Object} Created message
  */
 router.post('/', protect, chatController.postChatMessage);
+router.get('/conversations', protect, chatController.getConversations);
 
 module.exports = router;
 
