@@ -73,8 +73,6 @@ router.post("/send-test", async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
 
 router.post("/mark-read", async (req, res) => {
   console.log("POST /mark-read called"); // بداية الطلب
@@ -106,7 +104,6 @@ router.post("/mark-read", async (req, res) => {
   }
 });
 
->>>>>>> origin/develop
 router.get("/unread-count", protect, async (req, res) => {
   const userId = req.user.id; // افترض أن middleware للتحقق موجود
   try {

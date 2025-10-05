@@ -11,14 +11,14 @@ import TrackingOrders from "../delivery/Tracking";
 import Reports from "../delivery/ReportsPage";
 import Home from "../delivery/Home";
 
-export default function DeliveryRiutes() {
+export default function DeliveryRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginDelivery />} />
-      <Route path="/register" element={<RegisterDelivery />} />
+      <Route path="delivery/login" element={<LoginDelivery />} />
+      <Route path="register" element={<RegisterDelivery />} />
 
-      <Route path="/dashboard" element={<Dashboard />}>
+      <Route path="delivery/dashboard" element={<Dashboard />}>
         <Route index element={<Home />} />
         <Route path="home" element={<Home />} />
         <Route path="getProfile" element={<DeliveryProfile />} />

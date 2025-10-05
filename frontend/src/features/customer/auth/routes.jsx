@@ -9,7 +9,7 @@ import ResetPasswordPage from "./ResetPasswordPage";
 const CustomerAuthRoutes = () => {
   return (
     <Routes>
-      <Route path="login" element={<LoginForm />} />
+      <Route path="/auth/login" element={<LoginForm />} />
       <Route path="signup" element={<SignupForm />} />
       <Route path="forgot-password" element={<ForgotPassword />} /> 
       <Route path="verify-email" element={<VerifyEmailPage />} />

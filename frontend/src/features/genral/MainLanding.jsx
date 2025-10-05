@@ -1,8 +1,6 @@
 import React from "react";
-import { FaShoppingBag, FaStore, FaTruck } from "react-icons/fa";
+import { FaShoppingBag, FaStore, FaTruck, FaShoppingCart } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShoppingCart } from "@fortawesome/free-solid-svg-icons";
 
 export default function LandingPage() {
   return (
@@ -29,11 +27,7 @@ export default function LandingPage() {
       {/* Section 2 */}
       <section className="py-24 px-6 md:px-20 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-12 bg-white rounded-2xl shadow-sm border border-gray-200 m-6 hover:shadow-md transition">
         <div className="flex flex-col items-center gap-4 order-2 md:order-1">
-          <FontAwesomeIcon
-            icon={faShoppingCart}
-            size="9x"
-            className="text-gray-700 hover:scale-110 transition-transform duration-300"
-          />
+          <FaShoppingCart className="text-9xl text-gray-700 hover:scale-110 transition-transform duration-300" />
         </div>
         <div className="max-w-md text-left flex flex-col items-start gap-6 order-1 md:order-2">
           <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">

@@ -212,10 +212,7 @@ exports.updateProduct = async (id, vendor_id, productData) => {
  * await deleteProduct(1, 1);
  */
 exports.deleteProduct = async (id, vendor_id) => {
-<<<<<<< HEAD
   console.log('Soft deleting productId:', id, 'for vendorId:', vendor_id);
-=======
->>>>>>> origin/develop
 
   // تحقق أولاً من وجود المنتج وحق البائع
   const result = await db.query(
@@ -235,10 +232,7 @@ exports.deleteProduct = async (id, vendor_id) => {
      RETURNING *;`,
     [id, vendor_id]
   );
-<<<<<<< HEAD
   console.log('Soft delete result:', deleteResult.rows);
-=======
->>>>>>> origin/develop
 
   if (deleteResult.rowCount === 0) {
     throw new Error("Product not found or unauthorized");

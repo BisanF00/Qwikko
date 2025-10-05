@@ -60,7 +60,7 @@ export const deleteCategory = createAsyncThunk(
 
 // Slice
 const categorySlice = createSlice({
-  name: "categories",
+  name: "categoriesAdmin",
   initialState: {
     categoryList: [],
     loading: false,

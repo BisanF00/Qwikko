@@ -1,16 +1,16 @@
 // src/features/admin/routes/AdminRoutes.jsx
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import ProtectedRoute from "../auth/ProtectedRoute";
-import Layout from "../layout/layout";
-import AdminHome from "../dashboard/dashboard";
-import VendorPage from "../vendor/vendor";
-import DeliveryPage from "../delivery/delivery";
-import OrderPage from "../orders/order";
-import CMSPage from "../CMS/cms";
-import Profile from "../layout/profile";
-import LoginForm from "../auth/loginForm";
-import NotFound from "../../notFound";
+import ProtectedRoute from "./auth/ProtectedRoute";
+import Layout from "./layout/layout";
+import AdminHome from "./dashboard/dashboard";
+import VendorPage from "./vendor/vendor";
+import DeliveryPage from "./delivery/delivery";
+import OrderPage from "./orders/order";
+import CMSPage from "./CMS/cms";
+import Profile from "./layout/profile";
+import LoginForm from "./auth/loginForm";
+import NotFound from "./../notFound";
 
 const AdminRoutes = () => {
   return (

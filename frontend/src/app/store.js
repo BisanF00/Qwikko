@@ -2,7 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 
 //Delivery
 import authReducer from "../features/delivery/auth/authSlice";
-import notificationsReducer from "../features/delivery/notification/notificationSlice";
+import notificationsDeliveryReducer from "../features/delivery/notification/notificationSlice";
 
 //Customer
 import customerAuthReducer from "../features/customer/auth/CustomerAuthSlice";
@@ -40,14 +40,14 @@ const store = configureStore({
     //Admin
     vendors: vendorsReducer,
     deliveries: deliveriesReducer,
-    orders: orderReducer,
+    ordersAdmin: orderReducer,
     cms: cmsReducer,
     notifications: notificationsReducer,
-    categories: categoryReducer,
+    categoriesAdmin: categoryReducer,
     
     //Delivery 
     auth: authReducer,
-    notifications: notificationsReducer,
+    notificationsDelivery: notificationsDeliveryReducer,
   },
 });
 

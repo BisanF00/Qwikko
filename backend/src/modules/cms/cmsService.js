@@ -99,6 +99,4 @@ exports.removeCMS = async (id) => {
   const deleted = await CMSModel.deleteCMS(id);
   if (!deleted) throw new Error("CMS record not found");
 };
-exports.listCMS = async (type, title) => {
-  return await CMSModel.getAllCMS(type, title);
-};
+

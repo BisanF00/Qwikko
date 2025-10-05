@@ -22,7 +22,7 @@ export default function VendorRoutes() {
         <Route index element={<VendorLanding />} />
  
         {/* Auth */}
-        <Route path="login" element={<Login />} />
+        <Route path="/vendor/login" element={<Login />} />
         <Route path="register" element={<RegisterVendor />} />
  
         {/* الصفحات المحمية */}
@@ -51,7 +51,7 @@ export default function VendorRoutes() {
           }
         />
         <Route
-          path="chat"
+          path="/vendor/chat"
           element={
             <ProtectedRoute>
               <ChatPage />
