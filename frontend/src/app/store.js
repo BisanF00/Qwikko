@@ -1,4 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
+
+//Delivery
+import authReducer from "../features/delivery/auth/authSlice";
+import notificationsReducer from "../features/delivery/notification/notificationSlice";
+
+//Customer
 import customerAuthReducer from "../features/customer/auth/CustomerAuthSlice";
 import productsReducer from "../features/customer/customer/productsSlice";
 import cartReducer from "../features/customer/customer/cartSlice";
@@ -38,8 +44,13 @@ const store = configureStore({
     cms: cmsReducer,
     notifications: notificationsReducer,
     categories: categoryReducer,
+    
+    //Delivery 
+    auth: authReducer,
+    notifications: notificationsReducer,
   },
 });
 
 export default store;
+
 

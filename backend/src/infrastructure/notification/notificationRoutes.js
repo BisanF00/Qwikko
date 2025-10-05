@@ -104,7 +104,6 @@ router.post("/mark-read", async (req, res) => {
   }
 });
 
-
 router.get("/unread-count", protect, async (req, res) => {
   const userId = req.user.id; // افترض أن middleware للتحقق موجود
   try {

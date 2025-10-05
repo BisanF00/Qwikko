@@ -17,6 +17,11 @@ const pool = require('../../config/db');
  * console.log(cmsPages);
  */
 exports.getAllCMS = async (type, title) => {
+  const { rows } = await pool.query(
+    `SELECT content, image_url FROM cms WHERE type=$1 AND status='active' AND title=$2`,
+    [type, title]
+  );
+
   const { rows } = await pool.query(`SELECT content, image_url FROM cms WHERE type=$1 AND status='active' AND title=$2`, [type,title]);
   return rows; 
 };
