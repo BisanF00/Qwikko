@@ -155,6 +155,15 @@ exports.updateOrderStatus = async function (req, res) {
         allowed_next: allowedNextStatuses,
       });
     }
+    // ✅ تحقق من الدفع قبل السماح بـ delivered
+    if (
+      status === "delivered" &&
+      order.payment_status.toLowerCase() !== "paid"
+    ) {
+      return res.status(400).json({
+        error: "Cannot mark order as delivered until payment status is 'paid'",
+      });
+    }
 
     // ✅ تحديث الحالة الجديدة
     const updated = await Delivery.updateOrderStatus(orderId, status);

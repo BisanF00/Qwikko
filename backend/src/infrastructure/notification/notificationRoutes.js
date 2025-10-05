@@ -73,6 +73,50 @@ router.post("/send-test", async (req, res) => {
   }
 });
 
+router.post("/mark-read", async (req, res) => {
+  console.log("POST /mark-read called"); // بداية الطلب
+
+  const { ids } = req.body; // array of notification ids
+  console.log("Received IDs:", ids);
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    console.warn("No IDs provided or not an array");
+    return res.status(400).json({ error: "No IDs provided" });
+  }
+
+  try {
+    const query = `
+      UPDATE notifications
+      SET read_status = true, updated_at = NOW()
+      WHERE id = ANY($1::int[])
+      RETURNING *;
+    `;
+    console.log("Running query:", query, "with ids:", ids);
+
+    const result = await pool.query(query, [ids]);
+    console.log("Query result:", result.rowCount, result.rows);
+
+    res.json({ updated: result.rowCount, notifications: result.rows });
+  } catch (err) {
+    console.error("Error marking notifications as read:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/unread-count", protect, async (req, res) => {
+  const userId = req.user.id; // افترض أن middleware للتحقق موجود
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND read_status = false`,
+      [userId]
+    );
+    res.json({ count: parseInt(result.rows[0].count, 10) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;
 
 

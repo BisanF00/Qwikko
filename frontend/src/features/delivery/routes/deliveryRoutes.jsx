@@ -11,7 +11,6 @@ import TrackingOrders from "../delivery/Tracking";
 import Reports from "../delivery/ReportsPage";
 import Home from "../delivery/Home";
 
-
 export default function DeliveryRiutes() {
   return (
     <Routes>
@@ -19,9 +18,7 @@ export default function DeliveryRiutes() {
       <Route path="/login" element={<LoginDelivery />} />
       <Route path="/register" element={<RegisterDelivery />} />
 
-      {/* Dashboard كمكون رئيسي */}
       <Route path="/dashboard" element={<Dashboard />}>
-        {/* الصفحة الافتراضية تظهر عند /delivery/dashboard */}
         <Route index element={<Home />} />
         <Route path="home" element={<Home />} />
         <Route path="getProfile" element={<DeliveryProfile />} />

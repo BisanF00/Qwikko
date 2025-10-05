@@ -22,6 +22,7 @@ export default function RegisterDelivery() {
     name: "",
     email: "",
     password: "",
+    confirmPassword: "",
     company_name: "",
     phone: "",
   });
@@ -32,6 +33,11 @@ export default function RegisterDelivery() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("❌ Passwords do not match!");
+      return;
+    }
     dispatch(registerDelivery(formData));
   };
 
@@ -101,6 +107,18 @@ export default function RegisterDelivery() {
             />
             <FaLock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
+          <div className="relative">
+            <input
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="w-full border p-3 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+              required
+            />
+            <FaLock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </div>
 
           <div className="relative">
             <input
@@ -136,20 +154,6 @@ export default function RegisterDelivery() {
           </button>
         </form>
 
-        {/* Google Sign-in button */}
-        <div className="w-full max-w-md mt-4">
-          <button
-            type="button"
-            className="w-full border border-gray-400 bg-transparent text-gray-700 p-3 rounded-lg transition-all duration-300 hover:bg-gray-100 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2 cursor-pointer"
-          >
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png"
-              alt="Google"
-              className="w-5 h-5"
-            />
-            <span>Sign in with Google</span>
-          </button>
-        </div>
 
         {error && <p className="mt-4 text-center text-red-600">{error}</p>}
         {successMessage && (

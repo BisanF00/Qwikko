@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   FaUser,
@@ -7,21 +7,44 @@ import {
   FaChartBar,
   FaHome,
 } from "react-icons/fa";
-import { FiLogOut, FiX } from "react-icons/fi";
+import { FiLogOut, FiX,FiMenu } from "react-icons/fi"; // ✅ أضفنا أيقونة X للإغلاق
+import { useDispatch } from "react-redux";
+import { logout } from "../auth/authSlice";
 
 export default function Sidebar({ isOpen, toggleSidebar }) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const sidebarRef = useRef();
 
   const handleLogout = () => {
-    localStorage.removeItem("token"); // حذف التوكن
+    localStorage.removeItem("token");
+    dispatch(logout());
     setShowLogoutModal(false);
-    navigate("/delivery/login"); // تحويل لصفحة تسجيل الدخول
+    navigate("/delivery/login");
   };
+
+  // إغلاق السايدبار عند الضغط خارجها
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        isOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target)
+      ) {
+        toggleSidebar(); // يغلق السايدبار
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, toggleSidebar]);
 
   return (
     <>
       <aside
+        ref={sidebarRef}
         className={`fixed top-0 left-0 h-screen bg-white shadow-md flex flex-col justify-between overflow-hidden transition-all duration-300 z-50 ${
           isOpen ? "w-64" : "w-0"
         }`}
@@ -31,18 +54,24 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             isOpen ? "opacity-100" : "opacity-0"
           }`}
         >
-          {/* زر الإغلاق داخل السايدبار */}
+          {/* الزر والشعار بنفس التنسيق */}
           {isOpen && (
-            <button
-              onClick={toggleSidebar}
-              className="ml-4 mt-4 mr-4 text-2xl text-gray-700 hover:text-black transition"
-            >
-              <FiX />
-            </button>
+            <div className="flex items-center gap-4 px-4 py-4">
+              {/* زر إغلاق / السايدبار */}
+              <button
+                onClick={toggleSidebar}
+                className="text-2xl text-gray-700 hover:text-black transition flex-shrink-0"
+              >
+                <FiMenu />
+              </button>
+
+              {/* الشعار */}
+              <div className="text-2xl font-bold text-gray-800">Qwikko</div>
+            </div>
           )}
 
           {/* Navigation */}
-          <nav className="flex flex-col space-y-2 px-4 mt-10">
+          <nav className="flex flex-col space-y-2 px-4 mt-4">
             <NavLink
               to="home"
               className={({ isActive }) =>
@@ -131,7 +160,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         </div>
       </aside>
 
-      {/* ✅ مودال تسجيل الخروج */}
+      {/* مودال تسجيل الخروج */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]">
           <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full text-center">

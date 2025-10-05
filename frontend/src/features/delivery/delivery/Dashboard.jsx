@@ -55,7 +55,7 @@ export default function DashboardLayout() {
         </main>
 
         {/* الفوتر دائمًا أسفل الصفحة */}
-        {/* <Footer /> */}
+        <Footer />
       </div>
     </div>
   );

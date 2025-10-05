@@ -1,4 +1,3 @@
-
 export const registerDeliveryAPI = async (formData) => {
   const res = await fetch("http://localhost:3000/api/auth/register/delivery", {
     method: "POST",
