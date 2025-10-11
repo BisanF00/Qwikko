@@ -3,6 +3,7 @@ import { configureStore } from "@reduxjs/toolkit";
 //Delivery
 import authReducer from "../features/delivery/auth/authSlice";
 import notificationsDeliveryReducer from "../features/delivery/notification/notificationSlice";
+import deliveryThemeReducer from "../features/delivery/delivery/deliveryThemeSlice";
 
 //Customer
 import customerAuthReducer from "../features/customer/auth/CustomerAuthSlice";
@@ -23,6 +24,7 @@ import orderReducer from "../features/admin/orders/orderSlice";
 import cmsReducer from "../features/admin/CMS/cmsSlice";
 import notificationsReducer from "../features/admin/CMS/notification/notificationSlice";
 import categoryReducer from "../features/admin/CMS/categories/categorySlice";
+import themeReducer from "../features/admin/dark-lightMode/themeSlice";
 
 const store = configureStore({
   reducer: {
@@ -33,7 +35,7 @@ const store = configureStore({
     orders: ordersReducer,
     profile: profileReducer,
     categories: categoriesReducer,
-    stores: storesReducer, 
+    stores: storesReducer,
     reviews: reviewsReducer,
     payment: paymentReducer,
     chat: chatReducer,
@@ -44,10 +46,11 @@ const store = configureStore({
     cms: cmsReducer,
     notifications: notificationsReducer,
     categoriesAdmin: categoryReducer,
-    
-    //Delivery 
+    theme: themeReducer,
+    //Delivery
     auth: authReducer,
     notificationsDelivery: notificationsDeliveryReducer,
+    deliveryTheme: deliveryThemeReducer,
   },
 });
 
