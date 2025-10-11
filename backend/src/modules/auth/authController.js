@@ -27,15 +27,12 @@ const admin = require("firebase-admin");
 
 exports.registerUser = async (req, res) => {
   try {
-    // 1️⃣ تسجيل المستخدم (Postgres + Firebase)
     const { postgresUser, firebaseUser } = await authService.register(req.body, 'customer');
 
-    // 2️⃣ توليد رابط التحقق من Firebase
     const verificationLink = await admin.auth().generateEmailVerificationLink(firebaseUser.email, {
-      url: `http://localhost:5173/customer/login`, // يمكن تغييره حسب فرنترك
+      url: `http://localhost:5173/customer/login`,
     });
 
-    // 3️⃣ ارسال الايميل
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -53,7 +50,6 @@ exports.registerUser = async (req, res) => {
              <a href="${verificationLink}">Verify Email</a>`,
     });
 
-    // 4️⃣ إرجاع بيانات المستخدم
     const userData = {
       id: postgresUser.id,
       name: postgresUser.name,
@@ -160,6 +156,8 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     switch (err.code) {
+      case 'EMAIL_NOT_VERIFIED':
+        return res.status(403).json({ error: err.message });
       case 'NOT_APPROVED':
         return res.status(403).json({ error: err.message });
       case 'NOT_FOUND_RECORD':

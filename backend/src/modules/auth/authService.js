@@ -103,6 +103,15 @@ exports.login = async ({ email, password }) => {
   const { rows } = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
   const user = rows[0];
 
+  // ✅ تحقق من حالة التفعيل من Firebase
+  const firebaseUser = await admin.auth().getUserByEmail(email);
+  if (!firebaseUser.emailVerified) {
+    const err = new Error('Please verify your email before logging in.');
+    err.code = 'EMAIL_NOT_VERIFIED';
+    throw err;
+  }
+
+
   if (!user) {
     const err = new Error('User not found');
     err.code = 'USER_NOT_FOUND';

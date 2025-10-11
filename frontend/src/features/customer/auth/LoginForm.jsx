@@ -7,6 +7,8 @@ import React, { useEffect  ,useState} from "react"; // useEffect من react
 import { fetchCurrentUser } from "../customer/cartSlice";
 
 import { useNavigate, useLocation  } from "react-router-dom";
+import { FiEye, FiEyeOff } from "react-icons/fi";
+
 
 const LoginForm = () => {
   const dispatch = useDispatch();
@@ -18,6 +20,8 @@ const LoginForm = () => {
     const [infoMessage, setInfoMessage] = useState("");
 
   const { register, handleSubmit, formState: { errors } } = useForm();
+  const [showPassword, setShowPassword] = useState(false);
+
 
   useEffect(() => {
     if (location.state?.message) {
@@ -68,13 +72,28 @@ const LoginForm = () => {
         />
         {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
 
-        <input
-          type="password"
-          placeholder="Password"
-          {...register("password", { required: "Password is required" })}
-          className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            {...register("password", { required: "Password is required" })}
+            className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12"
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}   
+            onClick={() => setShowPassword(s => !s)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1"
+          >
+            {showPassword
+              ? <FiEyeOff aria-hidden="true" size={18} />
+              : <FiEye aria-hidden="true" size={18} />
+            }
+          </button>
+        </div>
 
         <button
           type="submit"

@@ -112,7 +112,7 @@ useEffect(() => {
     if (payload.notification) {
       new Notification(payload.notification.title, {
         body: payload.notification.body,
-        icon: "/favicon.ico",
+        icon: "/Qlogo.png",
       });
     }
   });
