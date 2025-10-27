@@ -25,6 +25,7 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const identifyCustomer = require("./src/middleware/identifyCustomer");
 const guestToken = require("./src/middleware/guestToken");
+const OpenAI = require("openai");
 
 
 // ===============================
@@ -130,9 +131,20 @@ app.use("/api/products", productsRoutes);
 const reviewRoutes = require("./src/modules/review/reviewRoutes");
 app.use("/api/reviews", reviewRoutes);
 
+// ChatBot
+// const chatbotRoute = require("./src/modules/chatbot/chatbotRoutes");
+// app.use("/api/chatbot", chatbotRoute);
+
 // ===============================
 // SERVER LISTENER
 // ===============================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+});
 
+require("./src/modules/chatbot/chatSocket")(io); // مرّر io مش server
