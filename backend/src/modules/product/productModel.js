@@ -79,6 +79,11 @@ exports.insertProduct = async (productData) => {
 
     const product = productResult.rows[0];
 
+    await client.query(
+    `INSERT INTO product_embedding_queue (product_id) VALUES ($1)`,
+    [product.id]
+  );
+
     if (images && images.length > 0) {
       const imageQuery = `
         INSERT INTO product_images (product_id, image_url)

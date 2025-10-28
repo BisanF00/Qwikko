@@ -48,6 +48,7 @@ const OrderDetailsPage = () => {
   const [pointsError, setPointsError] = useState("");
   const [finalTotal, setFinalTotal] = useState(0);
 
+  
   useEffect(() => {
     if (profile) {
       setAddress((prev) => ({
@@ -59,6 +60,9 @@ const OrderDetailsPage = () => {
     }
   }, [profile]);
 
+
+
+  // fetch cart by id
   useEffect(() => {
     if (cartFromState) {
       dispatch(setCurrentCart(cartFromState));
@@ -121,36 +125,31 @@ const handleValidateCoupon = async () => {
   if (!currentCart?.items?.length) return alert("No items in cart");
 
   try {
-    // جهزي عناصر السلة بالشكل الصحيح
     const preparedItems = currentCart.items.map(item => ({
-      product_id: item.product_id,          // مهم جداً للبك إند
+      product_id: item.product_id,          
       quantity: Number(item.quantity),
       price: Number(item.price),
       vendor_id: item.vendor_id || null,
     }));
 
-    // جلب معرف المستخدم من localStorage
     const userIdNum = Number(localStorage.getItem("userId"));
     if (!userIdNum) return alert("User not logged in. Please login first.");
 
-    // طباعة اللوج قبل الإرسال للتأكد
-    console.log("📦 Sending to backend:", {
+    console.log(" Sending to backend:", {
       coupon_code: couponCode,
       userId: userIdNum,
       cartItems: preparedItems,
     });
 
-    // استدعاء دالة التحقق من الكوبون
     const result = await couponAPI.validateCoupon(couponCode, userIdNum, preparedItems);
 
-    // التعامل مع النتيجة
     if (result.valid) {
       setAppliedCoupon(result);
-      console.log("✅ Coupon applied successfully:", result);
+      console.log(" Coupon applied successfully:", result);
     } else {
       alert(result.message);
       setAppliedCoupon(null);
-      console.log("❌ Coupon not applied:", result);
+      console.log(" Coupon not applied:", result);
     }
   } catch (err) {
     console.error("Error validating coupon:", err);
@@ -179,10 +178,53 @@ const handleValidateCoupon = async () => {
   };
 
   const handleCheckoutClick = async () => {
-    if (!address.address_line1 || !address.city) {
-      alert("Address Line 1 and City are required!");
-      return;
+  if (!address.address_line1 || !address.city) {
+    alert("Address Line 1 and City are required!");
+    return;
+  }
+
+  setCheckoutLoading(true);
+  setCheckoutError(null);
+
+  try {
+
+    const paymentData =
+      paymentMethod === "card"
+        ? {
+            transactionId: `card_SANDBOX_${Date.now()}`,
+            card_last4: card.number.slice(-4),
+            card_brand: detectBrand(card.number),
+            expiry_month: parseInt(card.expiryMonth, 10),
+            expiry_year: parseInt(card.expiryYear, 10),
+          }
+        : {};
+
+    const newOrderResponse = await customerAPI.checkout({
+      cart_id: currentCart.id,
+      address: fullAddress,
+      paymentMethod: paymentMethod === "card" ? "credit_card" : paymentMethod,
+      paymentData,
+    });
+
+    const orderId = newOrderResponse.order.id;
+    console.log(" NEW ORDER:", newOrderResponse);
+
+
+    const fullOrderResponse = await customerAPI.getOrderById(orderId); // /api/customers/orders/:orderId
+    const itemsToLog = fullOrderResponse.data.items;
+
+    console.log(" Items to log:", itemsToLog);
+
+
+    if (profile && itemsToLog?.length) {
+      await Promise.all(
+        itemsToLog.map(item =>
+          customerAPI.logInteraction(profile.id, item.product_id, "purchase")
+            .catch(err => console.error("⚠️ Log interaction failed for item", item.product_id, err))
+        )
+      );
     }
+
 
     try {
       setCheckoutLoading(true);
@@ -239,13 +281,29 @@ const handleValidateCoupon = async () => {
         order: newOrder,
       });
       navigate("/customer/orders");
+
+      await dispatch(deleteCart(currentCart.id)).unwrap();
+      dispatch(fetchOrders());
     } catch (err) {
-      console.error("Checkout failed:", err);
-      setCheckoutError(err.response?.data?.error || err.message);
-    } finally {
-      setCheckoutLoading(false);
+      console.error("Failed to delete cart:", err);
     }
-  };
+
+    setOrderSuccess({
+      method: paymentMethod === "card" ? "Credit Card" : paymentMethod,
+      order: fullOrderResponse,
+    });
+
+    navigate("/customer/orders");
+  } catch (err) {
+    console.error(" Checkout failed:", err);
+    setCheckoutError(err.response?.data?.error || err.message);
+  } finally {
+    setCheckoutLoading(false);
+  }
+};
+
+
+
 
   useEffect(() => {
     if (paymentMethod === "paypal" && window.paypal && currentCart) {

@@ -3,7 +3,9 @@ import "yet-another-react-lightbox/styles.css";
 import Lightbox from "yet-another-react-lightbox";
 import { ImHeart } from "react-icons/im";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { AddWishlist, RemoveWishlist } from "../../wishlist/wishlistApi";
+import customerAPI from "../services/customerAPI";
 
 const ProductCard = ({ product, onAddToCart, onToggleWishlistFromPage, isLoggedIn }) => {
   const [currentImage, setCurrentImage] = useState(0);
@@ -12,7 +14,7 @@ const ProductCard = ({ product, onAddToCart, onToggleWishlistFromPage, isLoggedI
   const [wishlist, setWishlist] = useState(product.isInWishlist || false);
   const [wishlistId, setWishlistId] = useState(product.wishlist_id || null);
   const [loading, setLoading] = useState(false);
-
+  const userId = useSelector((state) => state.cart.user?.id);
   const nextImage = () => {
     setCurrentImage((prev) => (prev + 1) % images.length);
   };
@@ -21,10 +23,18 @@ const ProductCard = ({ product, onAddToCart, onToggleWishlistFromPage, isLoggedI
     setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
   };
 
+  const openLightbox = () => {
+    setIsOpen(true);
+  };
+
+
   const onToggleWishlist = async () => {
     if (loading) return;
     setLoading(true);
     try {
+      const productId = product.id || product.product_id;
+      if (!productId) throw new Error("Product ID not found");
+
       if (wishlist) {
         await RemoveWishlist(wishlistId);
         setWishlist(false);
@@ -32,12 +42,24 @@ const ProductCard = ({ product, onAddToCart, onToggleWishlistFromPage, isLoggedI
         onToggleWishlistFromPage &&
           onToggleWishlistFromPage(wishlistId, product.product_id, false);
         window.location.reload();
+
+          onToggleWishlistFromPage(productId, false, wishlistId);
+
+        if (isLoggedIn && userId) {
+          // console.log("Logging unlike:", productId);
+          await customerAPI.logInteraction(userId, productId, "unlike");
+        }
       } else {
-        const added = await AddWishlist(product.id);
+        const added = await AddWishlist(productId);
         setWishlist(true);
         setWishlistId(added.id);
         onToggleWishlistFromPage &&
-          onToggleWishlistFromPage(added.id, product.id, true);
+          onToggleWishlistFromPage(productId, true, added.id);
+
+        if (isLoggedIn && userId) {
+          console.log("Logging like:", productId);
+          await customerAPI.logInteraction(userId, productId, "like");
+        }
       }
     } catch (err) {
       console.error(err);
@@ -52,7 +74,6 @@ const ProductCard = ({ product, onAddToCart, onToggleWishlistFromPage, isLoggedI
       <div className="h-48 w-full mb-2 overflow-hidden rounded relative cursor-pointer">
         {images.length > 0 ? (
           <>
-            {/* 🧱 الرابط إلى صفحة تفاصيل المنتج */}
             <Link to={`/customer/product/${product.id}`}>
               <div className="h-48 w-full mb-2 overflow-hidden rounded relative flex items-center justify-center bg-gray-100">
                 <img

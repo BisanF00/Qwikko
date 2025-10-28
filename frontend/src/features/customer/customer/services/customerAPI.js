@@ -3,6 +3,8 @@ import qs from "qs";
 
 const API_URL = "http://localhost:3000/api/customers";
 const PAYMENT_URL = "http://localhost:3000/api/payment";
+const INTERACTION_URL = "http://localhost:3000/api/interactions";
+
 
 const attachToken = (config) => {
   const token = localStorage.getItem("token") || localStorage.getItem("guest_token");
@@ -26,6 +28,13 @@ chatAPI.interceptors.request.use(attachToken);
 
 api.interceptors.request.use(attachToken);
 paymentAPI.interceptors.request.use(attachToken);
+
+
+const interactionAPI = axios.create({
+  baseURL: INTERACTION_URL,
+  withCredentials: true,
+});
+interactionAPI.interceptors.request.use(attachToken);
 
 const customerAPI = {
   
@@ -206,7 +215,21 @@ const customerAPI = {
     return res.data.cart;
   },
 
-  // ✅ Loyalty Points Endpoints
+//AI
+logInteraction: async (userId, productId, type) => {
+  try {
+    const res = await interactionAPI.post("/", { userId, productId, type });
+    console.log("Logging interaction:", { userId, productId, type });
+
+    return res.data;
+  } catch (err) {
+    console.error("Error logging interaction:", err);
+    throw err;
+  }
+},
+
+
+  // Loyalty Points Endpoints
   getLoyaltyPoints: async () => {
     const res = await api.get("/loyalty");
     return res.data;
