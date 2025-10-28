@@ -43,7 +43,7 @@ const OrderDetailPage = () => {
     name: "",
   });
   const [cardError, setCardError] = useState("");
-
+  
   useEffect(() => {
     if (profile) {
       setAddress((prev) => ({
@@ -54,6 +54,8 @@ const OrderDetailPage = () => {
       }));
     }
   }, [profile]);
+
+
 
   // fetch cart by id
   useEffect(() => {
@@ -107,84 +109,77 @@ const OrderDetailPage = () => {
 
   // MAIN checkout handler (handles COD, PayPal handled separately by paypal Buttons onApprove)
   const handleCheckoutClick = async () => {
-    if (!address.address_line1 || !address.city) {
-      alert("Address Line 1 and City are required!");
-      return;
+  if (!address.address_line1 || !address.city) {
+    alert("Address Line 1 and City are required!");
+    return;
+  }
+
+  setCheckoutLoading(true);
+  setCheckoutError(null);
+
+  try {
+
+    const paymentData =
+      paymentMethod === "card"
+        ? {
+            transactionId: `card_SANDBOX_${Date.now()}`,
+            card_last4: card.number.slice(-4),
+            card_brand: detectBrand(card.number),
+            expiry_month: parseInt(card.expiryMonth, 10),
+            expiry_year: parseInt(card.expiryYear, 10),
+          }
+        : {};
+
+    const newOrderResponse = await customerAPI.checkout({
+      cart_id: currentCart.id,
+      address: fullAddress,
+      paymentMethod: paymentMethod === "card" ? "credit_card" : paymentMethod,
+      paymentData,
+    });
+
+    const orderId = newOrderResponse.order.id;
+    console.log(" NEW ORDER:", newOrderResponse);
+
+
+    const fullOrderResponse = await customerAPI.getOrderById(orderId); // /api/customers/orders/:orderId
+    const itemsToLog = fullOrderResponse.data.items;
+
+    console.log(" Items to log:", itemsToLog);
+
+
+    if (profile && itemsToLog?.length) {
+      await Promise.all(
+        itemsToLog.map(item =>
+          customerAPI.logInteraction(profile.id, item.product_id, "purchase")
+            .catch(err => console.error("⚠️ Log interaction failed for item", item.product_id, err))
+        )
+      );
     }
+
 
     try {
-      setCheckoutLoading(true);
-      setCheckoutError(null);
-
-      if (paymentMethod === "cod") {
-        // cash on delivery
-        const newOrder = await customerAPI.checkout({
-          cart_id: currentCart.id,
-          address: fullAddress,
-          paymentMethod: "cod",
-          paymentData: {},
-        });
-
-        await dispatch(deleteCart(currentCart.id)).unwrap();
-        dispatch(fetchOrders());
-
-        setOrderSuccess({ method: "Cash on Delivery", order: newOrder });
-        navigate("/customer/orders");
-        return;
-      }
-
-      if (paymentMethod === "card") {
-        // validate card form
-        const vErr = validateCardFields();
-        if (vErr) {
-          setCardError(vErr);
-          setCheckoutLoading(false);
-          return;
-        }
-
-        // prepare fields
-        const rawNumber = card.number.replace(/\D/g, "");
-        const card_last4 = rawNumber.slice(-4);
-        const card_brand = detectBrand(rawNumber);
-        const expiry_month = parseInt(card.expiryMonth, 10);
-        const expiry_year = parseInt(card.expiryYear, 10);
-        // generate sandbox transaction id (in real integration you get this from gateway)
-        const transactionId = `card_SANDBOX_${Date.now()}`;
-
-        // pass paymentData to checkout — placeOrderFromCart will insert payment row using these fields
-        const paymentDataToSend = {
-        transactionId: transactionId || null,
-        card_last4: card_last4 || null,
-        card_brand: card_brand || null,
-        expiry_month: expiry_month || null,
-        expiry_year: expiry_year || null,
-      };
-
-      const newOrder = await customerAPI.checkout({
-        cart_id: currentCart.id,
-        address: fullAddress,
-        paymentMethod: paymentMethod === "card" ? "credit_card" : paymentMethod,
-        paymentData: paymentDataToSend,
-      });
-
-
-        // dispatch cleanup
-        await dispatch(deleteCart(currentCart.id)).unwrap();
-        dispatch(fetchOrders());
-
-        setOrderSuccess({ method: "Credit Card", transactionId, order: newOrder });
-        navigate("/customer/orders");
-        return;
-      }
-
-      // If paypal, the paypal Buttons onApprove will call checkout (we render PayPal buttons below)
+      await dispatch(deleteCart(currentCart.id)).unwrap();
+      dispatch(fetchOrders());
     } catch (err) {
-      console.error("Checkout failed:", err);
-      setCheckoutError(err.response?.data?.error || err.message);
-    } finally {
-      setCheckoutLoading(false);
+      console.error("Failed to delete cart:", err);
     }
-  };
+
+    setOrderSuccess({
+      method: paymentMethod === "card" ? "Credit Card" : paymentMethod,
+      order: fullOrderResponse,
+    });
+
+    navigate("/customer/orders");
+  } catch (err) {
+    console.error(" Checkout failed:", err);
+    setCheckoutError(err.response?.data?.error || err.message);
+  } finally {
+    setCheckoutLoading(false);
+  }
+};
+
+
+
 
   // PayPal Buttons integration (same you had; onApprove will call checkout with paymentData.transaction_id)
   useEffect(() => {
