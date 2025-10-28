@@ -1,6 +1,7 @@
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteItem, updateItemQuantity  } from "../cartSlice";
+import customerAPI from "../services/customerAPI";
 
 const CartItem = ({ item }) => {
   const dispatch = useDispatch();
@@ -10,13 +11,37 @@ const CartItem = ({ item }) => {
       ? item.images[0]
       : null;
 
-  const handleRemove = () => {
-    if (!currentCart?.id) {
-      console.error("No currentCart.id, cannot delete item", item.id);
-      return;
+  const handleRemove = async () => {
+  if (!currentCart?.id) {
+    console.error("No currentCart.id, cannot delete item", item.id);
+    return;
+  }
+
+  try {
+    const productsResponse = await customerAPI.getProducts({ search: item.name });
+
+    const products = Array.isArray(productsResponse)
+      ? productsResponse
+      : productsResponse.items || [];
+
+    const product = products.find(p => p.name === item.name);
+
+    if (!product?.id) {
+      console.warn("Product ID not found for interaction");
+    } else {
+      const userId = currentCart.user_id || localStorage.getItem("token");
+      await customerAPI.logInteraction(userId, product.id, "remove_from_cart");
+      console.log("Interaction logged for product:", product.id);
     }
+
     dispatch(deleteItem({ cartId: currentCart.id, itemId: item.id }));
-  };
+
+  } catch (err) {
+    console.error("Error removing item or logging interaction", err);
+  }
+};
+
+
 
 
   const handleDecrease = () => {

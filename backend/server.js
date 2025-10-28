@@ -127,6 +127,18 @@ app.use("/api/products", productsRoutes);
 const reviewRoutes = require("./src/modules/review/reviewRoutes");
 app.use("/api/reviews", reviewRoutes);
 
+
+
+const awarenessRouter = require('./src/modules/AwarenessAI/awareness');
+app.use('/api/awareness', awarenessRouter);
+
+const interactionsRouter = require('./src/modules/AwarenessAI/routes/interactions');
+app.use('/api/interactions', interactionsRouter);
+
+const recommendationsRouter = require('./src/modules/AwarenessAI/routes/recommendations');
+app.use('/api/recommendations', recommendationsRouter);
+
+
 // ===============================
 // SERVER LISTENER
 // ===============================
