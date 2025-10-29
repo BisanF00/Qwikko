@@ -150,6 +150,22 @@ app.use("/api/products", productsRoutes);
 const reviewRoutes = require("./src/modules/review/reviewRoutes");
 app.use("/api/reviews", reviewRoutes);
 
+// ChatBot
+// const chatbotRoute = require("./src/modules/chatbot/chatbotRoutes");
+// app.use("/api/chatbot", chatbotRoute);
+// Coupon Routes
+const couponRoutes = require("./src/modules/coupon/CouponRoutes");
+app.use("/api/coupons", couponRoutes);
+
+
+const awarenessRouter = require('./src/modules/AwarenessAI/awareness');
+app.use('/api/awareness', awarenessRouter);
+
+const interactionsRouter = require('./src/modules/AwarenessAI/routes/interactions');
+app.use('/api/interactions', interactionsRouter);
+
+const recommendationsRouter = require('./src/modules/AwarenessAI/routes/recommendations');
+app.use('/api/recommendations', recommendationsRouter);
 
 
 // ===============================
