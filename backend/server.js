@@ -47,6 +47,24 @@ app.use(
 
 // Middleware to parse incoming JSON requests
 app.use(express.json());
+// ======== PING ENDPOINTS ========
+// 1) Ping بسيط للتأكد من اشتغال السيرفر
+app.get('/__ping', (req, res) => {
+  res.json({ ok: true, service: 'api', time: new Date().toISOString() });
+});
+
+// 2) Ping للقاعدة (DB)
+app.get('/__db', async (req, res) => {
+  try {
+    // لو db عندك Pool: استخدمي pool.query مباشرة
+    const { rows } = await pool.query('SELECT NOW() as now');
+    res.json({ ok: true, db: 'up', now: rows?.[0]?.now });
+  } catch (err) {
+    console.error('DB ping error:', err);
+    res.status(500).json({ ok: false, db: 'down', error: err.message });
+  }
+});
+
 app.use(cookieParser());
 
 app.get("/set-cookie", (req, res) => {
@@ -120,8 +138,9 @@ const customerRoutes = require("./src/modules/customer/customerRoutes");
 app.use("/api/customers", customerRoutes);
 
 // Chat Routes
-const chatRoutes = require("./src/modules/chat/chatRoutes");
-app.use("/api/chat", chatRoutes);
+// const chatRoutesFactory = require("./src/modules/chat/chatRoutes");
+// app.use("/api/chat", chatRoutesFactory(io));
+
 
 // Product Routes
 const productsRoutes = require("./src/modules/product/productRoutes");
@@ -131,9 +150,7 @@ app.use("/api/products", productsRoutes);
 const reviewRoutes = require("./src/modules/review/reviewRoutes");
 app.use("/api/reviews", reviewRoutes);
 
-// ChatBot
-// const chatbotRoute = require("./src/modules/chatbot/chatbotRoutes");
-// app.use("/api/chatbot", chatbotRoute);
+
 
 // ===============================
 // SERVER LISTENER
@@ -146,5 +163,9 @@ const io = require("socket.io")(server, {
     methods: ["GET", "POST"],
   },
 });
+  console.log("✅ Socket.io server initialized");
+const chatRoutesFactory = require("./src/modules/chat/chatRoutes");
+app.use("/api/chat", chatRoutesFactory(io));
 
-require("./src/modules/chatbot/chatSocket")(io); // مرّر io مش server
+require("./src/modules/chatbot/chatSocket")(io); 
+require("./src/modules/chat/chatSocket")(io);
