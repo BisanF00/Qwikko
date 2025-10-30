@@ -26,15 +26,12 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.63.0",
     "react-icons": "^5.5.0",
-<<<<<<< HEAD
     "react-leaflet": "^4.2.1",
-=======
     "react-markdown": "^10.1.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.1",
     "recharts": "^3.2.1",
     "socket.io-client": "^4.8.1",
->>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.1",
     "toast": "^0.5.4",

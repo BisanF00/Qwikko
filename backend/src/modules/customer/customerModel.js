@@ -234,9 +234,8 @@ exports.placeOrderFromCart = async function ({
       total_amount += item.price * item.quantity;
     }
 
-<<<<<<< HEAD
     const total_with_shipping = total_amount + delivery_fee;
-=======
+
     // 4b. Apply coupon if provided
     let discount_amount = 0;
     let final_amount = total_amount;
@@ -278,12 +277,10 @@ exports.placeOrderFromCart = async function ({
         discount_reason = discount_reason ? `${discount_reason} + Loyalty Points` : "Loyalty Points";
       }
     }
->>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
 
     // 5. Insert order
     const payment_status = paymentMethod === "cod" ? "pending" : "paid";
     const orderResult = await pool.query(
-<<<<<<< HEAD
       `INSERT INTO orders (
      customer_id,
      delivery_company_id,
@@ -291,6 +288,7 @@ exports.placeOrderFromCart = async function ({
      status,
      shipping_address,
      total_amount,
+     discount_amount, final_amount, coupon_code,
      delivery_fee,
      total_with_shipping,
      payment_status,
@@ -298,27 +296,19 @@ exports.placeOrderFromCart = async function ({
      created_at,
      updated_at
    )
-   VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+   VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
    RETURNING *`,
-=======
-      `INSERT INTO orders (customer_id, delivery_company_id, status, shipping_address, total_amount, discount_amount, final_amount, coupon_code, payment_status, created_at, updated_at)
-       VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-       RETURNING *`,
->>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
       [
         userId,
         deliveryCompanyId,
         savedAddress.id,
         JSON.stringify(savedAddress),
         total_amount,
-<<<<<<< HEAD
         delivery_fee,
         total_with_shipping,
-=======
         discount_amount + discount_from_points,
         final_amount,
         coupon_code || null,
->>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
         payment_status,
         minDistance || null,
       ]
@@ -445,7 +435,29 @@ exports.placeOrderFromCart = async function ({
       );
     }
 
-<<<<<<< HEAD
+     // 8. سجل استخدام الكوبون
+    if (coupon_code) {
+      await pool.query(
+        `INSERT INTO coupon_usages (coupon_code, user_id, order_id, used_at)
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+        [coupon_code, userId, order.id]
+      );
+
+      await pool.query(
+        `UPDATE coupons
+         SET usage_limit = CASE 
+           WHEN usage_limit IS NOT NULL THEN usage_limit - 1
+           ELSE NULL
+         END
+         WHERE code = $1`,
+        [coupon_code]
+      );
+    }
+
+    // 9️⃣ ✅ Add loyalty points earned (2% of final_amount)
+    const pointsEarned = Math.floor(final_amount * 0.02); // 2% من قيمة الطلب
+    await exports.addPoints(userId, pointsEarned, `Earned from order #${order.id}`);
+
     // 8. Return order with items & payments
     const updatedOrder = await pool.query(
       `SELECT 
@@ -503,8 +515,17 @@ exports.placeOrderFromCart = async function ({
       [order.id]
     );
 
+    const result = updatedOrder.rows[0];
+    result.loyalty = {
+      points_used,
+      discount_from_points,
+      points_earned: pointsEarned,
+      message: `You earned ${pointsEarned} loyalty points!`
+    };
+
     totalVendorsDistance = 0;
-    return updatedOrder.rows[0];
+
+    return result;
 
     // 8. Return order + payments
     //     const orderWithPaymentsResult = await pool.query(
@@ -564,69 +585,6 @@ exports.placeOrderFromCart = async function ({
     //     global.totalVendorsDistance = 0;
 
     //     return orderWithPaymentsResult.rows[0];
-=======
-    // 8. سجل استخدام الكوبون
-    if (coupon_code) {
-      await pool.query(
-        `INSERT INTO coupon_usages (coupon_code, user_id, order_id, used_at)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
-        [coupon_code, userId, order.id]
-      );
-
-      await pool.query(
-        `UPDATE coupons
-         SET usage_limit = CASE 
-           WHEN usage_limit IS NOT NULL THEN usage_limit - 1
-           ELSE NULL
-         END
-         WHERE code = $1`,
-        [coupon_code]
-      );
-    }
-
-    // 9️⃣ ✅ Add loyalty points earned (2% of final_amount)
-    const pointsEarned = Math.floor(final_amount * 0.02); // 2% من قيمة الطلب
-    await exports.addPoints(userId, pointsEarned, `Earned from order #${order.id}`);
-
-
-    // 10️⃣ Return order with payment + loyalty info
-    const orderWithPaymentsResult = await pool.query(
-      `SELECT 
-        o.*,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', p.id,
-              'payment_method', p.payment_method,
-              'amount', p.amount,
-              'status', p.status,
-              'transaction_id', p.transaction_id,
-              'card_last4', p.card_last4,
-              'card_brand', p.card_brand,
-              'expiry_month', p.expiry_month,
-              'expiry_year', p.expiry_year,
-              'created_at', p.created_at
-            )
-          ) FILTER (WHERE p.id IS NOT NULL),
-          '[]'
-        ) AS payments
-      FROM orders o
-      LEFT JOIN payments p ON p.order_id = o.id
-      WHERE o.id = $1
-      GROUP BY o.id`,
-      [order.id]
-    );
-
-    const result = orderWithPaymentsResult.rows[0];
-    result.loyalty = {
-      points_used,
-      discount_from_points,
-      points_earned: pointsEarned,
-      message: `You earned ${pointsEarned} loyalty points!`
-    };
-
-    return result;
->>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
   } catch (err) {
     console.error("placeOrderFromCart error:", err);
     throw err;
@@ -1768,8 +1726,7 @@ exports.removeProductFromWishlist = async (wishlistId) => {
 
   return { success: true };
 };
-<<<<<<< HEAD
-=======
+
 exports.getPointsByUser = async (userId) => {
   const result = await pool.query(
     'SELECT points_balance, points_history FROM loyalty_points WHERE user_id = $1',
@@ -1831,4 +1788,3 @@ exports.redeemPoints = async (userId, points, description) => {
   const discountPercentage = Math.floor(points / 100) * 10;
   return discountPercentage;
 };
->>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875

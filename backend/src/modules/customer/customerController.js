@@ -797,8 +797,6 @@ exports.sendContactMessage = async (req, res) => {
     res.status(500).json({ message: "Failed to send message." });
   }
 };
-<<<<<<< HEAD
-=======
 
 
 exports.getLoyaltyPoints = async (req, res) => {
@@ -845,4 +843,3 @@ exports.redeemLoyaltyPoints = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
->>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
