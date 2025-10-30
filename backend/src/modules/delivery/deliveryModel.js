@@ -142,6 +142,7 @@ exports.getOrderWithCompany = async function (orderId) {
   const order = orderRes.rows[0];
   if (!order) return null;
 
+<<<<<<< HEAD
   let deliveryUserId = null;
   if (order.delivery_company_id) {
     const res = await pool.query(
@@ -192,10 +193,35 @@ exports.getOrderWithCompany = async function (orderId) {
    JOIN vendors v ON p.vendor_id = v.id
    JOIN users u ON v.user_id = u.id
    WHERE oi.order_id = $1`,
+=======
+  // جلب المنتجات المرتبطة بالطلب مع الصور وبيانات الفندور
+  const itemsRes = await pool.query(
+    `SELECT
+        oi.id AS order_item_id,
+        p.id AS product_id,
+        p.name AS product_name,
+        p.description AS product_description,
+        oi.quantity,
+        oi.price AS item_price,
+        oi.variant,
+        v.id AS vendor_id,
+        v.store_name AS vendor_name,
+        u.email AS vendor_email,
+        u.phone AS vendor_phone,
+        COALESCE(json_agg(pi.image_url) FILTER (WHERE pi.id IS NOT NULL), '[]') AS images
+     FROM order_items oi
+     JOIN products p ON p.id = oi.product_id
+     JOIN vendors v ON p.vendor_id = v.id
+     JOIN users u ON v.user_id = u.id
+     LEFT JOIN product_images pi ON pi.product_id = p.id
+     WHERE oi.order_id = $1
+     GROUP BY oi.id, p.id, v.id, u.id`,
+>>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
     [orderId]
   );
 
   order.items = itemsRes.rows;
+<<<<<<< HEAD
   order.shipping_address = JSON.stringify(shippingAddress);
 
   if (itemsRes.rows.length > 0 && shippingAddress?.latitude) {
@@ -222,8 +248,12 @@ exports.getOrderWithCompany = async function (orderId) {
       : null;
   }
 
+=======
+
+>>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
   return order;
 };
+
 
 /**
  * Update order status
@@ -333,6 +363,7 @@ exports.getCoverageById = async (userId) => {
 //   try {
 //     const enrichedAreas = [];
 
+<<<<<<< HEAD
 //     for (const areaName of mergedAreas) {
 //       const geo = await geocodeAddress(areaName);
 //       if (geo) {
@@ -392,6 +423,8 @@ exports.addCoverage = async (userId, cities) => {
   return insertedRows;
 };
 
+=======
+>>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
 /**
  * Update company coverage completely
  * @param {number} id
@@ -464,6 +497,7 @@ exports.updateCoverage = async (userId, data) => {
 //   const company = await exports.getCoverageById(userId);
 //   if (!company) return null;
 
+<<<<<<< HEAD
 //   const currentAreas = company.coverage_areas || [];
 //   const newAreas = currentAreas.filter(
 //     (area) => !areasToRemove.includes(area.name)
@@ -488,6 +522,10 @@ exports.deleteCoverageAreas = async (userId, citiesToRemove) => {
   if (!companyRes.rows[0]) return null;
 
   const companyId = companyRes.rows[0].id;
+=======
+  const currentAreas = company.coverage_areas || [];
+  const newAreas = currentAreas.filter((area) => !areasToRemove.includes(area));
+>>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
 
   const result = await pool.query(
     `DELETE FROM delivery_coverage_locations
@@ -615,6 +653,32 @@ exports.getWeeklyReport = async (deliveryCompanyId, days = 7) => {
     endTsExclusive,
   ]);
 
+<<<<<<< HEAD
+=======
+  // 7️⃣ الطلبات اليومية (للرسم البياني) - مع الأيام الفارغة
+  const dailyOrdersQuery = `
+  WITH days AS (
+    SELECT generate_series($2::date, ($3::date - interval '1 day'), interval '1 day')::date AS order_date
+  )
+  SELECT 
+    d.order_date,
+    COALESCE(COUNT(o.id), 0) AS orders_count,
+    COALESCE(SUM(o.total_amount), 0) AS total_amount
+  FROM days d
+  LEFT JOIN orders o 
+    ON DATE(o.created_at) = d.order_date 
+    AND o.delivery_company_id = $1
+  GROUP BY d.order_date
+  ORDER BY d.order_date ASC
+`;
+
+  const dailyOrdersRes = await pool.query(dailyOrdersQuery, [
+    deliveryCompanyId,
+    startTs,
+    endTsExclusive,
+  ]);
+
+>>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
   const STATUSES = [
     "pending",
     "processing",
@@ -647,6 +711,9 @@ exports.getWeeklyReport = async (deliveryCompanyId, days = 7) => {
     top_customers: topCustomersRes.rows,
     top_vendors: topVendorsRes.rows,
     pending_count: pendingRes.rows[0]?.pending_count || 0,
+
+    // 📊 البيانات الجديدة للرسم البياني
+    daily_orders: dailyOrdersRes.rows,
   };
 };
 /**
@@ -726,6 +793,7 @@ exports.updatePaymentStatus = async (orderId, paymentStatus) => {
   );
   return result.rows[0] || null;
 };
+<<<<<<< HEAD
 
 exports.getCustomerCoordinates = async (customerAddressId) => {
   const result = await pool.query(
@@ -931,3 +999,5 @@ exports.getOptimizedOrderDistances = async function (
     total_duration_min: totalDuration,
   };
 };
+=======
+>>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875

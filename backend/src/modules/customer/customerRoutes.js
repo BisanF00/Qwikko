@@ -6,6 +6,7 @@ const router = express.Router();
 const identifyCustomer = require("../../middleware/identifyCustomer");
 const guestToken = require("../../middleware/guestToken");
 const customerModel = require("./customerModel");
+const db = require("../../config/db");
 
 /**
  * @route GET /api/customer/
@@ -203,6 +204,96 @@ router.get("/get-guest-token", guestToken, (req, res) => {
 
 
 router.post("/contactUs",customerController.sendContactMessage);
+// Loyalty Points Routes
+/**
+ * @route GET /api/customer/loyalty
+ * @desc Get loyalty points balance and history
+ * @access Private (customer)
+ */
+router.get(
+  "/loyalty",
+  protect,
+  authorizeRole('customer'),
+  customerController.getLoyaltyPoints
+);
+
+/**
+ * @route POST /api/customer/loyalty/add
+ * @desc Add loyalty points after completing an order
+ * @access Private (customer)
+ */
+router.post(
+  "/loyalty/add",
+  protect,
+  authorizeRole('customer'),
+  customerController.addLoyaltyPoints
+);
+
+/**
+ * @route POST /api/customer/loyalty/redeem
+ * @desc Redeem loyalty points for a discount
+ * @access Private (customer)
+ */
+router.post(
+  "/loyalty/redeem",
+  protect,
+  authorizeRole('customer'),
+  customerController.redeemLoyaltyPoints
+);
+
+
+
+router.get("/most-popular", async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+          p.id,
+          p.name,
+          p.price,
+          COALESCE(SUM(oi.quantity), 0) AS total_sold,
+          COALESCE(
+            json_agg(pi.image_url) FILTER (WHERE pi.id IS NOT NULL),
+            '[]'
+          ) AS images
+      FROM products p
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN product_images pi ON p.id = pi.product_id
+      GROUP BY p.id
+      HAVING COALESCE(SUM(oi.quantity), 0) > 0
+      ORDER BY total_sold DESC
+      LIMIT 10;
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+router.get("/newest", async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+          p.id,
+          p.name,
+          p.price,
+          COALESCE(
+            json_agg(pi.image_url) FILTER (WHERE pi.id IS NOT NULL),
+            '[]'
+          ) AS images
+      FROM products p
+      LEFT JOIN product_images pi ON p.id = pi.product_id
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+      LIMIT 10;
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 
 module.exports = router;

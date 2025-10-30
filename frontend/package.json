@@ -13,6 +13,10 @@
     "@react-google-maps/api": "^2.20.7",
     "@reduxjs/toolkit": "^2.9.0",
     "axios": "^1.12.2",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dayjs": "^1.11.18",
+    "date-fns-tz": "^3.2.0",
     "firebase": "^12.2.1",
     "framer-motion": "^12.23.22",
     "leaflet": "^1.9.4",
@@ -22,7 +26,15 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.63.0",
     "react-icons": "^5.5.0",
+<<<<<<< HEAD
     "react-leaflet": "^4.2.1",
+=======
+    "react-markdown": "^10.1.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.9.1",
+    "recharts": "^3.2.1",
+    "socket.io-client": "^4.8.1",
+>>>>>>> 76a0ba81c004b0ba992340c7e291e67630f93875
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.1",
     "toast": "^0.5.4",

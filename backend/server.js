@@ -25,6 +25,7 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const identifyCustomer = require("./src/middleware/identifyCustomer");
 const guestToken = require("./src/middleware/guestToken");
+const OpenAI = require("openai");
 
 
 // ===============================
@@ -32,13 +33,16 @@ const guestToken = require("./src/middleware/guestToken");
 // ===============================
 // Uncomment and configure if frontend runs on a different origin
 const cors = require('cors');
-app.use(cors({
-  origin: 'http://localhost:5173', 
-  methods: ['GET','POST','PUT','DELETE','PATCH'],
-  credentials: true ,
-  allowedHeaders: ['Content-Type', 'Authorization','Guest-Token'],
-  exposedHeaders: ['Guest-Token']
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "Guest-Token"],
+    exposedHeaders: ["Guest-Token"],
+  })
+);
+
 
 
 // Middleware to parse incoming JSON requests
@@ -127,8 +131,34 @@ app.use("/api/products", productsRoutes);
 const reviewRoutes = require("./src/modules/review/reviewRoutes");
 app.use("/api/reviews", reviewRoutes);
 
+// ChatBot
+// const chatbotRoute = require("./src/modules/chatbot/chatbotRoutes");
+// app.use("/api/chatbot", chatbotRoute);
+// Coupon Routes
+const couponRoutes = require("./src/modules/coupon/CouponRoutes");
+app.use("/api/coupons", couponRoutes);
+
+
+const awarenessRouter = require('./src/modules/AwarenessAI/awareness');
+app.use('/api/awareness', awarenessRouter);
+
+const interactionsRouter = require('./src/modules/AwarenessAI/routes/interactions');
+app.use('/api/interactions', interactionsRouter);
+
+const recommendationsRouter = require('./src/modules/AwarenessAI/routes/recommendations');
+app.use('/api/recommendations', recommendationsRouter);
+
+
 // ===============================
 // SERVER LISTENER
 // ===============================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+});
+
+require("./src/modules/chatbot/chatSocket")(io); 
