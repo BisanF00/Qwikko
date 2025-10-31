@@ -96,24 +96,29 @@ exports.placeOrderFromCart = async function ({
   paymentMethod,
   paymentData,
   coupon_code,
-  use_loyalty_points = false // ✅ خيار استخدام النقاط كخصم
+  use_loyalty_points = 0,
+  total_amount: totalFromFront,
+  discount_amount: discountFromFront,
+  final_amount: finalFromFront,
 }) {
   try {
-    // 1. Fetch cart items
+    // 1️⃣ جلب عناصر السلة
     const cartItemsResult = await pool.query(
-      `SELECT ci.product_id, ci.quantity, ci.variant, p.price
+      `SELECT ci.id, ci.cart_id, ci.quantity, ci.variant, 
+              p.id AS product_id, p.name, p.price, p.vendor_id, 
+              v.store_name AS vendor_name
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
-       JOIN carts c ON ci.cart_id = c.id
-       WHERE ci.cart_id = $1 AND c.user_id = $2`,
-      [cartId, userId]
+       JOIN vendors v ON p.vendor_id = v.id
+       WHERE ci.cart_id = $1`,
+      [cartId]
     );
 
     if (cartItemsResult.rows.length === 0) {
       throw new Error("Cart is empty or not found");
     }
 
-    // 2. Insert address
+    // 2️⃣ إدراج العنوان
     const addressResult = await pool.query(
       `INSERT INTO addresses (user_id, address_line1, address_line2, city, state, postal_code, country)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -130,13 +135,13 @@ exports.placeOrderFromCart = async function ({
     );
     const savedAddress = addressResult.rows[0];
 
-    // 3. Find delivery company
+    // 3️⃣ إيجاد شركة التوصيل
     const deliveryResult = await pool.query(
       `SELECT id 
-       FROM delivery_companies
-       WHERE LOWER($1) = ANY(ARRAY(SELECT LOWER(unnest(coverage_areas))))
+       FROM delivery_companies 
+       WHERE LOWER($1) = ANY(ARRAY(SELECT LOWER(unnest(coverage_areas)))) 
          AND status = 'approved'
-       ORDER BY created_at ASC
+       ORDER BY created_at ASC 
        LIMIT 1`,
       [savedAddress.city]
     );
@@ -147,58 +152,64 @@ exports.placeOrderFromCart = async function ({
 
     const deliveryCompanyId = deliveryResult.rows[0].id;
 
-    // 4. Calculate total
+    // 4️⃣ الحسابات من الفرونت إن وجدت
     let total_amount = 0;
     for (let item of cartItemsResult.rows) {
       total_amount += item.price * item.quantity;
     }
 
-    // 4b. Apply coupon if provided
-    let discount_amount = 0;
+    let coupon_discount = 0;
     let final_amount = total_amount;
-    let discount_reason = "";
 
-    if (coupon_code) {
-      const { valid, message, discount_amount: disc, final_amount: final } =
-        await validateCoupon(coupon_code, userId, cartItemsResult.rows);
+    // ✅ استخدم القيم القادمة من الفرونت لو تم إرسالها
+    if (totalFromFront && finalFromFront) {
+      total_amount = totalFromFront;
+      final_amount = finalFromFront;
+      coupon_discount = discountFromFront || 0;
 
-      if (!valid) throw new Error(message);
-
-      discount_amount = disc;
-      final_amount = final;
-      discount_reason = `Coupon (${coupon_code})`;
-    }
-
-    // 4c. ✅ Apply loyalty points as discount (if chosen)
-    let points_used = 0;
-    let discount_from_points = 0;
-    if (use_loyalty_points) {
-      const loyaltyData = await exports.getPointsByUser(userId);
-
-      if (loyaltyData.points_balance >= 100) {
-        // كل 100 نقطة = 10% خصم
-        const discountPercent = Math.floor(loyaltyData.points_balance / 100) * 10;
-
-        // تطبيق الخصم بحد أقصى 50%
-        const appliedDiscount = Math.min(discountPercent, 50);
-
-        discount_from_points = (total_amount * appliedDiscount) / 100;
-        final_amount -= discount_from_points;
-
-        // احسبي كم نقطة تم استخدامها فعلاً
-        points_used = (appliedDiscount / 10) * 100;
-
-        // خصم النقاط فعليًا من المستخدم
-        await exports.redeemPoints(userId, points_used, `Used for ${appliedDiscount}% discount on order`);
-
-        discount_reason = discount_reason ? `${discount_reason} + Loyalty Points` : "Loyalty Points";
+      if (final_amount > total_amount) {
+        throw new Error("Invalid final amount values from frontend");
       }
     }
+    // 4b️⃣ تحقق يدوي من الكوبون إذا لم تُرسل قيم من الفرونت
+    else if (coupon_code) {
+      const { valid, message, discount_amount: disc, final_amount: final } =
+        await validateCoupon(coupon_code, userId, cartItemsResult.rows);
+      if (!valid) throw new Error(message);
 
-    // 5. Insert order
+      coupon_discount = disc || 0;
+      final_amount = total_amount - coupon_discount;
+    }
+
+    // 4c️⃣ نقاط الولاء
+    let points_used = 0;
+    let discount_from_points = 0;
+    let discount_reason = "";
+
+    if (use_loyalty_points && use_loyalty_points > 0) {
+      const loyaltyData = await exports.getPointsByUser(userId);
+      points_used = Math.min(loyaltyData.points_balance, use_loyalty_points);
+      discount_from_points = points_used * 0.1;
+      final_amount -= discount_from_points;
+      if (final_amount < 0) final_amount = 0;
+
+      await exports.redeemPoints(
+        userId,
+        points_used,
+        `Used for $${discount_from_points.toFixed(2)} discount`
+      );
+
+      discount_reason = coupon_code
+        ? `Coupon (${coupon_code}) + Loyalty Points`
+        : "Loyalty Points";
+    }
+
+    // 5️⃣ إنشاء الطلب
     const payment_status = paymentMethod === "cod" ? "pending" : "paid";
     const orderResult = await pool.query(
-      `INSERT INTO orders (customer_id, delivery_company_id, status, shipping_address, total_amount, discount_amount, final_amount, coupon_code, payment_status, created_at, updated_at)
+      `INSERT INTO orders 
+       (customer_id, delivery_company_id, status, shipping_address, total_amount, 
+        discount_amount, final_amount, coupon_code, payment_status, created_at, updated_at)
        VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING *`,
       [
@@ -206,15 +217,16 @@ exports.placeOrderFromCart = async function ({
         deliveryCompanyId,
         JSON.stringify(savedAddress),
         total_amount,
-        discount_amount + discount_from_points,
+        coupon_discount + discount_from_points,
         final_amount,
         coupon_code || null,
         payment_status,
       ]
     );
+
     const order = orderResult.rows[0];
 
-    // 6. Insert order items
+    // 6️⃣ عناصر الطلب
     for (let item of cartItemsResult.rows) {
       await pool.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price, variant)
@@ -229,10 +241,11 @@ exports.placeOrderFromCart = async function ({
       );
     }
 
-    // 7. سجل الدفع إذا الدفع أونلاين
+    // 7️⃣ الدفع
     if (paymentMethod !== "cod") {
       await pool.query(
-        `INSERT INTO payments (order_id, user_id, payment_method, status, transaction_id, card_last4, card_brand, expiry_month, expiry_year, amount, created_at)
+        `INSERT INTO payments 
+         (order_id, user_id, payment_method, status, transaction_id, card_last4, card_brand, expiry_month, expiry_year, amount, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)`,
         [
           order.id,
@@ -249,7 +262,7 @@ exports.placeOrderFromCart = async function ({
       );
     }
 
-    // 8. سجل استخدام الكوبون
+    // 8️⃣ تحديث استخدام الكوبون
     if (coupon_code) {
       await pool.query(
         `INSERT INTO coupon_usages (coupon_code, user_id, order_id, used_at)
@@ -258,46 +271,49 @@ exports.placeOrderFromCart = async function ({
       );
 
       await pool.query(
-        `UPDATE coupons
+        `UPDATE coupons 
          SET usage_limit = CASE 
-           WHEN usage_limit IS NOT NULL THEN usage_limit - 1
-           ELSE NULL
-         END
+           WHEN usage_limit IS NOT NULL THEN usage_limit - 1 
+           ELSE NULL 
+         END 
          WHERE code = $1`,
         [coupon_code]
       );
     }
 
-    // 9️⃣ ✅ Add loyalty points earned (2% of final_amount)
-    const pointsEarned = Math.floor(final_amount * 0.02); // 2% من قيمة الطلب
-    await exports.addPoints(userId, pointsEarned, `Earned from order #${order.id}`);
+    // 9️⃣ نقاط الولاء المكتسبة
+    const pointsEarned = Math.floor(final_amount * 0.02);
+    await exports.addPoints(
+      userId,
+      pointsEarned,
+      `Earned from order #${order.id}`
+    );
 
-
-    // 10️⃣ Return order with payment + loyalty info
+    // 🔟 النتيجة النهائية
     const orderWithPaymentsResult = await pool.query(
       `SELECT 
-        o.*,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', p.id,
-              'payment_method', p.payment_method,
-              'amount', p.amount,
-              'status', p.status,
-              'transaction_id', p.transaction_id,
-              'card_last4', p.card_last4,
-              'card_brand', p.card_brand,
-              'expiry_month', p.expiry_month,
-              'expiry_year', p.expiry_year,
-              'created_at', p.created_at
-            )
-          ) FILTER (WHERE p.id IS NOT NULL),
-          '[]'
-        ) AS payments
-      FROM orders o
-      LEFT JOIN payments p ON p.order_id = o.id
-      WHERE o.id = $1
-      GROUP BY o.id`,
+         o.*, 
+         COALESCE(
+           json_agg(
+             json_build_object(
+               'id', p.id,
+               'payment_method', p.payment_method,
+               'amount', p.amount,
+               'status', p.status,
+               'transaction_id', p.transaction_id,
+               'card_last4', p.card_last4,
+               'card_brand', p.card_brand,
+               'expiry_month', p.expiry_month,
+               'expiry_year', p.expiry_year,
+               'created_at', p.created_at
+             )
+           ) FILTER (WHERE p.id IS NOT NULL),
+           '[]'
+         ) AS payments
+       FROM orders o
+       LEFT JOIN payments p ON p.order_id = o.id
+       WHERE o.id = $1
+       GROUP BY o.id`,
       [order.id]
     );
 
@@ -306,7 +322,7 @@ exports.placeOrderFromCart = async function ({
       points_used,
       discount_from_points,
       points_earned: pointsEarned,
-      message: `You earned ${pointsEarned} loyalty points!`
+      message: `You earned ${pointsEarned} loyalty points!`,
     };
 
     return result;
@@ -314,6 +330,7 @@ exports.placeOrderFromCart = async function ({
     throw err;
   }
 };
+
 
 
 
@@ -446,6 +463,8 @@ exports.getCartById = async (id) => {
       ci.cart_id, 
       ci.quantity, 
       ci.variant, 
+      p.id AS product_id,       -- رقم المنتج
+      p.vendor_id,              -- رقم vendor
       p.price, 
       p.name,
       v.store_name AS vendor_name,
@@ -467,6 +486,7 @@ exports.getCartById = async (id) => {
 
   return { ...cartRes.rows[0], items: itemsRes.rows };
 };
+
 
 /**
  * Create a new cart for a user
