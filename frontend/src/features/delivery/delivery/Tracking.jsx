@@ -26,22 +26,11 @@ export default function TrackingPage() {
         const data = await getTrackingOrder(orderId);
         setOrder(data);
 
-        // shipping_address: قد يكون JSON string أو Object
-        let customerAddressId = null;
-        try {
-          if (data?.shipping_address) {
-            const addr =
-              typeof data.shipping_address === "string"
-                ? JSON.parse(data.shipping_address)
-                : data.shipping_address;
-            customerAddressId = addr?.id ?? null;
-          }
-        } catch {
-          customerAddressId = null;
-        }
+        const customerAddressId = data?.shipping_address
+          ? JSON.parse(data.shipping_address).id
+          : null;
 
-        const vendorIds =
-          data?.items?.map((item) => item.vendor_id).filter(Boolean) || [];
+        const vendorIds = data.items?.map((item) => item.vendor_id) || [];
 
         const deliveryUserId =
           data?.delivery_user_id || data?.delivery_company_user_id || null;
@@ -52,17 +41,17 @@ export default function TrackingPage() {
           return;
         }
 
-        if (customerAddressId && vendorIds.length > 0) {
+        if (customerAddressId && vendorIds.length > 0 && deliveryUserId) {
           const est = await getDeliveryEstimate({
             userId: deliveryUserId,
             customerAddressId,
             vendorIds,
           });
           setEstimate(est);
-          // console.log("Delivery estimate:", est);
+          console.log("Delivery estimate:", est);
         }
       } catch (err) {
-        setMessage(err.message || "Failed to load order");
+        setMessage(err.message);
       } finally {
         setLoading(false);
       }
@@ -70,7 +59,6 @@ export default function TrackingPage() {
     loadOrder();
   }, [orderId]);
 
-  // دمج العناصر المتطابقة (حسب vendor_id + product_id + variant)
   const mergedItems =
     order?.items && Array.isArray(order.items)
       ? order.items.reduce((acc, item) => {
@@ -88,16 +76,13 @@ export default function TrackingPage() {
 
   const mergedItemsArray = Object.values(mergedItems || {});
 
-  if (loading) return <p className="text-center mt-10"> Loading order...</p>;
+  if (loading) return <p className="text-center mt-10">Loading order...</p>;
   if (message)
     return <p className="text-center mt-10 text-red-500">{message}</p>;
   if (!order) return <p className="text-center mt-10">❌ Order not found</p>;
 
   const formatCurrency = (value) =>
-    Number(value || 0).toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
+    value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
   const productsTotal = mergedItemsArray.reduce(
     (acc, item) => acc + item.quantity * item.item_price,
@@ -105,11 +90,9 @@ export default function TrackingPage() {
   );
   const totalWithShipping = productsTotal + (estimate?.total_delivery_fee || 0);
 
-  // Segments الخاصة بالمورّدين من estimate
   const vendorsInRoute =
     estimate?.route?.filter((r) => r.vendor_id !== null) || [];
 
-  // تجميع المنتجات تحت كل مورّد مع معلومات التواصل (من order.items)
   const vendorsGrouped = vendorsInRoute.map((vr) => {
     const products = mergedItemsArray.filter(
       (item) => item.vendor_id === vr.vendor_id
@@ -125,14 +108,6 @@ export default function TrackingPage() {
         vendor_name: vendorInfo?.store_name || vr.to || "Unknown Vendor",
         vendor_email: vendorInfo?.vendor_email || "N/A",
         vendor_phone: vendorInfo?.vendor_phone || "N/A",
-        vendor_user_id:
-          Number(
-            vendorInfo?.vendor_user_id ??
-              vendorInfo?.user_id ??
-              vendorInfo?.vendorUserId ??
-              vendorInfo?.vendor_userId ??
-              vendorInfo?.vendor_owner_id
-          ) || null,
         distance_km: vr.distance_km,
         delivery_fee: vr.delivery_fee,
         duration_min: vr.duration_min,
@@ -141,17 +116,15 @@ export default function TrackingPage() {
     };
   });
 
-  // ترتيب المورّدين حسب المسافة
   vendorsGrouped.sort(
     (a, b) =>
       (a.vendor.distance_km ?? Infinity) - (b.vendor.distance_km ?? Infinity)
   );
 
-  // نقاط الخريطة
   const routePoints =
     estimate?.route?.map((r) => ({
-      lat: r.latitude ?? r.lat,
-      lng: r.longitude ?? r.lng,
+      lat: r.latitude || r.lat,
+      lng: r.longitude || r.lng,
       label: r.to,
     })) || [];
 
@@ -174,7 +147,15 @@ export default function TrackingPage() {
   const goChatWithVendor = (vendor) => {
     const vendorName =
       vendor.vendor_name || `Vendor #${vendor.vendor_id || ""}`;
-    const vendorUserId = vendor.vendor_user_id;
+
+    const vendorUserId =
+      Number(
+        vendor.vendor_user_id ??
+          vendor.user_id ??
+          vendor.vendorUserId ??
+          vendor.vendor_userId ??
+          vendor.vendor_owner_id
+      ) || null;
 
     if (!Number.isFinite(vendorUserId) || vendorUserId <= 0) {
       alert("Vendor user id not available for this order item.");
@@ -203,44 +184,26 @@ export default function TrackingPage() {
 
       {/* Customer Info */}
       <section
-        className="p-6 rounded-2xl shadow-lg"
+        className="p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300"
         style={{
           backgroundColor: isDarkMode ? "#666666" : "#ffffff",
           color: isDarkMode ? "#ffffff" : "#242625",
         }}
       >
-        <h3
-          className="flex items-center gap-2 text-xl font-semibold mb-4"
-          style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-        >
+        <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
           <FaUser /> Customer Info
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <p>
-            <strong style={{ color: isDarkMode ? "#ffffff" : "#242625" }}>
-              Name:
-            </strong>{" "}
-            {order?.customer_name || "N/A"}
-          </p>
-          <p>
-            <strong style={{ color: isDarkMode ? "#ffffff" : "#242625" }}>
-              Email:
-            </strong>{" "}
-            {order?.customer_email || "N/A"}
-          </p>
-          <p>
-            <strong style={{ color: isDarkMode ? "#ffffff" : "#242625" }}>
-              Phone:
-            </strong>{" "}
-            {order?.customer_phone || "N/A"}
-          </p>
+          <p>Name: {order?.customer_name || "N/A"}</p>
+          <p>Email: {order?.customer_email || "N/A"}</p>
+          <p>Phone: {order?.customer_phone || "N/A"}</p>
         </div>
       </section>
 
-      {/* Route Details */}
+      {/* Delivery Route */}
       <section
-        className="p-6 rounded-2xl shadow-lg"
+        className="p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300"
         style={{
           backgroundColor: isDarkMode ? "#555" : "#fdfdfd",
           color: isDarkMode ? "#ffffff" : "#242625",
@@ -249,7 +212,6 @@ export default function TrackingPage() {
         <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
           <FaRoute /> Delivery Route Details
         </h3>
-
         <div className="space-y-2 text-sm">
           {estimate?.route?.map((segment, idx) => (
             <p key={idx}>
@@ -278,26 +240,22 @@ export default function TrackingPage() {
         )}
       </section>
 
-      {/* Map */}
       {routePoints.length >= 2 && (
-        <section className="p-6 rounded-2xl shadow-lg">
+        <section className="p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
           <h3 className="text-xl font-semibold mb-4">Delivery Route</h3>
           <MapView routePoints={routePoints} drawPolyline={true} />
         </section>
       )}
 
-      {/* Vendor / Product Info */}
+      {/* Vendor Info */}
       <section
-        className="p-6 rounded-2xl shadow-lg"
+        className="p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300"
         style={{
           backgroundColor: isDarkMode ? "#666666" : "#ffffff",
           color: isDarkMode ? "#ffffff" : "#242625",
         }}
       >
-        <h3
-          className="flex items-center gap-2 text-xl font-semibold mb-4"
-          style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-        >
+        <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
           <FaIndustry /> Vendor - Product Info
         </h3>
 
@@ -305,47 +263,34 @@ export default function TrackingPage() {
           vendorsGrouped.map(({ vendor, products }, idx) => (
             <div
               key={vendor.vendor_id}
-              className="p-4 border rounded-2xl mb-4 shadow-sm"
+              className="p-4 border rounded-2xl mb-4 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
               <div className="flex items-center justify-between mb-3">
-                <h4
-                  className="text-lg font-bold"
-                  style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-                >
-                  {vendor.vendor_name}
-                </h4>
-
+                <h4 className="text-lg font-bold">{vendor.vendor_name}</h4>
                 <div className="flex gap-4 text-sm font-semibold">
-                  <p>
-                    <strong>Distance:</strong> {vendor.distance_km?.toFixed(2)}{" "}
-                    km
-                  </p>
-                  <p>
-                    <strong>Delivery Fee:</strong>{" "}
-                    {formatCurrency(vendor.delivery_fee)}
-                  </p>
-                  <p>
-                    <strong>Duration:</strong> {vendor.duration_min?.toFixed(0)}{" "}
-                    min
-                  </p>
-                  <span className="text-sm opacity-80">Rank: {idx + 1}</span>
+                  <p>Distance: {vendor.distance_km?.toFixed(2)} km</p>
+                  <p>Fee: ${vendor.delivery_fee?.toFixed(2)}</p>
+                  <p>Duration: {vendor.duration_min} min</p>
+                  <span>Rank: {idx + 1}</span>
                 </div>
-
-                <button
-                  onClick={() => goChatWithVendor(vendor)}
-                  className="px-4 py-2 rounded-xl transition-transform duration-200 hover:scale-105"
-                  style={{ backgroundColor: "#307A59", color: "#ffffff" }}
-                >
-                  Chat with vendor
-                </button>
               </div>
+
+              <button
+                onClick={() => goChatWithVendor(vendor)}
+                className="px-4 py-2 rounded-xl hover:scale-105 transition-transform duration-200 mb-3"
+                style={{
+                  backgroundColor: "#307A59",
+                  color: "#ffffff",
+                }}
+              >
+                Chat with vendor
+              </button>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {products.map((item) => (
                   <div
                     key={item.order_item_id}
-                    className="flex gap-4 p-3"
-                    style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
+                    className="flex gap-4 p-3 border rounded-xl"
                   >
                     {item.images?.[0] && (
                       <img
@@ -354,33 +299,31 @@ export default function TrackingPage() {
                         className="w-28 h-28 object-cover rounded-lg"
                       />
                     )}
-                    <div className="flex-1">
+                    <div>
                       <p className="font-semibold">{item.product_name}</p>
                       {item.variant && (
                         <p className="text-sm">
                           {typeof item.variant === "object"
                             ? Object.entries(item.variant)
-                                .map(([key, value]) => `${key}: ${value}`)
+                                .map(([k, v]) => `${k}: ${v}`)
                                 .join(", ")
                             : item.variant}
                         </p>
                       )}
                       <p>
-                        Quantity: {item.quantity} x{" "}
+                        Quantity: {item.quantity} ×{" "}
                         {formatCurrency(item.item_price)}
                       </p>
                       <p className="font-semibold">
-                        Total: {formatCurrency(item.quantity * item.item_price)}
+                        Total:{" "}
+                        {formatCurrency(item.quantity * item.item_price)}
                       </p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div
-                className="mt-3 text-sm"
-                style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-              >
+              <div className="mt-3 text-sm">
                 <p>Email: {vendor.vendor_email}</p>
                 <p>Phone: {vendor.vendor_phone}</p>
               </div>
@@ -393,43 +336,24 @@ export default function TrackingPage() {
 
       {/* Order Details */}
       <section
-        className="p-6 rounded-2xl shadow-lg"
+        className="p-6 bg-white rounded-2xl shadow-lg"
         style={{
           backgroundColor: isDarkMode ? "#666666" : "#ffffff",
           color: isDarkMode ? "#ffffff" : "#242625",
         }}
       >
-        <h3
-          className="flex items-center gap-2 text-xl font-semibold mb-4"
-          style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-        >
+        <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
           <FaBox /> Order Details
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <p>
-            <strong style={{ color: isDarkMode ? "#ffffff" : "#242625" }}>
-              Status:
-            </strong>{" "}
-            {order?.status || "N/A"}
-          </p>
-          <p>
-            <strong style={{ color: isDarkMode ? "#ffffff" : "#242625" }}>
-              Payment:
-            </strong>{" "}
-            {order?.payment_status || "N/A"}
-          </p>
-          <p
-            className="sm:col-span-2"
-            style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-          >
-            <strong>Shipping Address:</strong>{" "}
-            {typeof order?.shipping_address === "string"
-              ? order.shipping_address
-              : JSON.stringify(order?.shipping_address ?? "N/A")}
+          <p>Status: {order?.status || "N/A"}</p>
+          <p>Payment: {order?.payment_status || "N/A"}</p>
+          <p className="sm:col-span-2">
+            Shipping Address: {order?.shipping_address || "N/A"}
           </p>
           <p className="sm:col-span-2">
-            <strong>Ordered At:</strong>{" "}
+            Ordered At:{" "}
             {order?.created_at
               ? new Date(order.created_at).toLocaleString()
               : "N/A"}
@@ -438,62 +362,38 @@ export default function TrackingPage() {
 
         {order?.items?.length > 0 && (
           <div className="mt-6">
-            <h4
-              className="font-semibold text-lg mb-2"
-              style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-            >
+            <h4 className="font-semibold text-lg mb-2">
               Products in this order:
             </h4>
-
-            <div
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {mergedItemsArray.map((item) => (
                 <div
                   key={item.order_item_id}
                   className="p-3 border rounded-lg"
-                  style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
                 >
+                  <p>{item.product_name}</p>
                   <p>
-                    {item?.product_name} (
-                    {item?.variant
-                      ? typeof item.variant === "object"
-                        ? Object.entries(item.variant)
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join(", ")
-                        : item.variant
-                      : "No variant"}
-                    )
-                  </p>
-
-                  <p>
-                    {item?.quantity} x {formatCurrency(item?.item_price)}
+                    {item.quantity} × {formatCurrency(item.item_price)}
                   </p>
                   <p className="font-semibold">
-                    Total: {formatCurrency(item?.quantity * item?.item_price)}
+                    Total:{" "}
+                    {formatCurrency(item.quantity * item.item_price)}
                   </p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 text-right flex flex-col items-end gap-2 text-xl font-bold">
+            <div className="mt-6 text-right flex flex-col items-end gap-2 text-xl font-bold text-purple-700">
               <div className="flex items-center gap-2">
-                <FaCreditCard
-                  className="text-2xl"
-                  style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-                />
-                <span style={{ color: isDarkMode ? "#ffffff" : "#242625" }}>
+                <FaCreditCard />
+                <span>
                   Order Total: {formatCurrency(productsTotal)}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <FaCreditCard
-                  className="text-2xl"
-                  style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-                />
-                <span style={{ color: isDarkMode ? "#ffffff" : "#242625" }}>
+                <FaCreditCard />
+                <span>
                   Order Total (with Shipping):{" "}
                   {formatCurrency(totalWithShipping)}
                 </span>
