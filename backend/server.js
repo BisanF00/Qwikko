@@ -45,6 +45,12 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+const path = require("path");
+
+// مسار ثابت للوصول للصور
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+
 app.get("/set-cookie", (req, res) => {
   res.cookie("Cookie_1", "value", {
     httpOnly: true, 
