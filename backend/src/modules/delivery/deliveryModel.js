@@ -231,7 +231,6 @@ exports.getOrderWithCompany = async function (orderId) {
   return order;
 };
 
-
 /**
  * Update order status
  * @async
