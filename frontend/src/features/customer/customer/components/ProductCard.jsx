@@ -8,12 +8,7 @@ import customerAPI from "../services/customerAPI";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 
-const ProductCard = ({
-  product,
-  onAddToCart,
-  onToggleWishlistFromPage,
-  isLoggedIn,
-}) => {
+const ProductCard = ({ product, onAddToCart, onToggleWishlistFromPage, isLoggedIn }) => {
   const [currentImage, setCurrentImage] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [wishlist, setWishlist] = useState(product.isInWishlist || false);
@@ -30,8 +25,7 @@ const ProductCard = ({
     : [];
 
   const nextImage = () => setCurrentImage((prev) => (prev + 1) % images.length);
-  const prevImage = () =>
-    setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
+  const prevImage = () => setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
   const openLightbox = () => setIsOpen(true);
 
   // Toggle wishlist
@@ -44,21 +38,18 @@ const ProductCard = ({
       if (!productId) throw new Error("Product ID not found");
 
       if (wishlist) {
-        if (!wishlistId)
-          throw new Error("Cannot remove wishlist: wishlistId not found");
+        if (!wishlistId) throw new Error("Cannot remove wishlist: wishlistId not found");
         await RemoveWishlist(wishlistId);
         setWishlist(false);
         setWishlistId(null);
         onToggleWishlistFromPage?.(productId, false, wishlistId);
-        if (isLoggedIn && userId)
-          await customerAPI.logInteraction(userId, productId, "unlike");
+        if (isLoggedIn && userId) await customerAPI.logInteraction(userId, productId, "unlike");
       } else {
         const added = await AddWishlist(productId);
         setWishlist(true);
         setWishlistId(added.id);
         onToggleWishlistFromPage?.(productId, true, added.id);
-        if (isLoggedIn && userId)
-          await customerAPI.logInteraction(userId, productId, "like");
+        if (isLoggedIn && userId) await customerAPI.logInteraction(userId, productId, "like");
       }
     } catch (err) {
       console.error("Wishlist toggle error:", err);
@@ -88,9 +79,7 @@ const ProductCard = ({
             onClick={openLightbox}
           />
         ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-            No Image
-          </div>
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">No Image</div>
         )}
 
         {images.length > 1 && (
