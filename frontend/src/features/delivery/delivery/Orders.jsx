@@ -109,8 +109,14 @@ export default function OrdersList() {
 
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="w-16 h-16 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg)]">
+        <div
+          className="w-10 h-10 border-[6px] rounded-full animate-spin"
+          style={{
+            borderColor: "var(--button)", // اللون من ملف الألوان
+            borderTopColor: "transparent", // عشان يعطي تأثير الدوران
+          }}
+        ></div>
       </div>
     );
   if (!orders.length)
