@@ -112,7 +112,9 @@ export default function DeliveryDashboard() {
           <div className="rounded-2xl p-8">
             <h1 className="text-4xl md:text-5xl font-extrabold">
               Welcome to{" "}
-              <span style={{ color: "var(--button)" }}>QWIKKO Delivery</span>
+              <span style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}>
+                QWIKKO Delivery
+              </span>
             </h1>
             <p className="text-base md:text-lg mt-3 opacity-90">
               Fast, smart, and organized delivery operations—everything you need

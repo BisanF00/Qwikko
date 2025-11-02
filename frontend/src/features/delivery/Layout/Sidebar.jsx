@@ -6,6 +6,7 @@ import {
   FaChartBar,
   FaHome,
   FaComments,
+  FaChartPie,
 } from "react-icons/fa";
 import { FiLogOut } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
@@ -53,7 +54,7 @@ export default function Sidebar() {
         <nav className="flex-1 overflow-y-auto py-4">
           <div className="px-3 space-y-1">
             <NavLink to="home" className={itemStyle}>
-              <FaHome /> <span>Dashboard</span>
+              <FaChartPie /> <span>Dashboard</span>
             </NavLink>
             <NavLink to="getProfile" className={itemStyle}>
               <FaUser /> <span>Profile</span>
@@ -64,9 +65,9 @@ export default function Sidebar() {
             <NavLink to="chat" className={itemStyle}>
               <FaComments /> <span>Chats</span>
             </NavLink>
-            <NavLink to="reports" className={itemStyle}>
+            {/* <NavLink to="reports" className={itemStyle}>
               <FaChartBar /> <span>Reports</span>
-            </NavLink>
+            </NavLink> */}
             <NavLink to="settings" className={itemStyle}>
               <FaCog /> <span>Settings</span>
             </NavLink>

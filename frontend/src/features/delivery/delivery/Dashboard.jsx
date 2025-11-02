@@ -54,7 +54,7 @@ export default function DashboardLayout() {
 
         {/* نحرك الكونتنت يمينًا بنفس عرض السايدبار */}
         <div
-          className="flex-1 flex flex-col transition-all duration-300"
+          className="flex-1 flex flex-col  "
           style={{ marginLeft: SIDEBAR_W }}
         >
           {/* لو النافبار Fixed عندك، خليه بدون إزاحة إضافية هون

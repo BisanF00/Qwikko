@@ -9,8 +9,8 @@ export default function Footer() {
     <footer
       className="py-4"
       style={{
-        backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-        color: isDarkMode ? "#ffffff" : "#242625",
+        backgroundColor: "var(--bg)",
+        color: "var(--text)",
       }}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -26,33 +26,46 @@ export default function Footer() {
         {/* Links Center */}
         <div className="flex flex-col items-center">
           <div className="flex space-x-6 text-sm mb-1">
-            <Link to="/contact" className="hover:underline transition">
+            <Link
+              to="/contact"
+              className="transition hover:underline"
+              style={{ color: "var(--primary)" }}
+            >
               Contact Us
             </Link>
-            <Link to="/about" className="hover:underline transition">
+            <Link
+              to="/about"
+              className="transition hover:underline"
+              style={{ color: "var(--primary)" }}
+            >
               About Us
             </Link>
           </div>
-          <p className="text-xs">2025 © All rights reserved</p>
+          <p
+            className="text-xs"
+            style={{ color: isDarkMode ? "#ffffff" : "292e2c" }}
+          >
+            2025 © All rights reserved
+          </p>
         </div>
 
         {/* Social Icons Right */}
-        <div className="flex space-x-4">
+        <div className="flex space-x-3">
           <a
             href="https://github.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded transition hover:bg-gray-300"
+            className="p-3 rounded-full bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white transition-all duration-200 shadow-sm"
           >
-            <FaGithub size={20} />
+            <FaGithub size={18} />
           </a>
           <a
             href="https://linkedin.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded transition hover:bg-gray-300"
+            className="p-3 rounded-full bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white transition-all duration-200 shadow-sm"
           >
-            <FaLinkedin size={20} />
+            <FaLinkedin size={18} />
           </a>
         </div>
       </div>
