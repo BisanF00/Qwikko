@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { useSelector } from "react-redux";
-import { chatApi, SOCKET_URL } from "./chatAPI";
+import { chatApi, SOCKET_URL } from "./Api/chatAPI.JS";
 import { useLocation } from "react-router-dom";
 
 const toUtcISO = (v) => {

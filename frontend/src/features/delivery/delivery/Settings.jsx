@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { FaSun, FaMoon, FaEdit } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { toggleTheme } from "./deliveryThemeSlice";
-import { fetchDeliveryProfile } from "./DeliveryAPI";
+import { fetchDeliveryProfile } from "./Api/DeliveryAPI";
 
 export default function SettingsPage() {
   const dispatch = useDispatch();

@@ -8,7 +8,7 @@ import {
   FaMoon,
   FaSun,
 } from "react-icons/fa";
-import { fetchLandingCMS } from "./LandingAPI";
+import { fetchLandingCMS } from "./Api/LandingAPI";
 import { useSelector, useDispatch } from "react-redux";
 import { toggleTheme, setTheme } from "./deliveryThemeSlice";
 

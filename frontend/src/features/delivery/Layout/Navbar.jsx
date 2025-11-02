@@ -9,9 +9,12 @@ import {
   FiUser,
   FiCheck,
 } from "react-icons/fi";
+import { FaUser, FaBell } from "react-icons/fa";
 import notificationAPI from "../notification/notificatationAPI";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleTheme } from "../delivery/deliveryThemeSlice";
+import { formatInTimeZone } from "date-fns-tz";
+
 
 export default function Navbar({ isSidebarOpen, toggleSidebar, user }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -19,12 +22,20 @@ export default function Navbar({ isSidebarOpen, toggleSidebar, user }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [visibleCount, setVisibleCount] = useState(10);
+
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
   const dispatch = useDispatch();
   const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
 
+  // ✅ وحّدنا نظام الألوان مع الكستمر (يدعم dark)
+  useEffect(() => {
+    if (isDarkMode) document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+  }, [isDarkMode]);
+
+  // ✅ جلب الإشعارات وعدّاد غير المقروء
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -52,6 +63,7 @@ export default function Navbar({ isSidebarOpen, toggleSidebar, user }) {
     }
   };
 
+  // ✅ تعليم الكل كمقروء
   const markAllAsRead = async () => {
     try {
       const unreadIds = notifications
@@ -68,69 +80,71 @@ export default function Navbar({ isSidebarOpen, toggleSidebar, user }) {
     }
   };
 
- const getAvatar = () => {
-   if (user?.avatarUrl)
-     return (
-       <img
-         src={user.avatarUrl}
-         alt="avatar"
-         className="w-8 h-8 rounded-full object-cover"
-       />
-     );
+  // Avatar متوافق مع الألوان
+  const getAvatar = () => {
+    if (user?.avatarUrl)
+      return (
+        <img
+          src={user.avatarUrl}
+          alt="avatar"
+          className="w-8 h-8 rounded-full object-cover"
+        />
+      );
 
-   const initials = user?.company_name
-     ? user.company_name
-         .split(" ")
-         .map((n) => n[0])
-         .join("")
-         .slice(0, 2)
-         .toUpperCase()
-     : "GU";
+    const initials = user?.company_name
+      ? user.company_name
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()
+      : "GU";
 
-   return (
-     <div
-       className="w-8 h-8 rounded-full flex items-center justify-center font-semibold"
-       style={{
-         backgroundColor: isDarkMode ? "#666666" : "#ffffff", // خلفية الديف
-         color: isDarkMode ? "#ffffff" : "#242625", // النصوص
-       }}
-     >
-       {initials}
-     </div>
-   );
- };
+    return (
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center font-semibold"
+        style={{
+          backgroundColor: "var(--div)",
+          color: "var(--text)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        {initials}
+      </div>
+    );
+  };
 
+  // يعرض الوقت بتوقيت عمّان بصيغة: Nov 01, 2025 at 03:45 PM
+  const formatNotifTime = (ts) => {
+    const raw = ts ?? null;
+    const d = raw ? new Date(raw) : null;
+    if (!d || isNaN(d)) return "";
+    return formatInTimeZone(d, "Asia/Amman", "MMM dd, yyyy 'at' hh:mm a");
+  };
 
   return (
     <header
-      className="fixed top-0 left-0 right-0  shadow px-6 py-0 flex justify-between items-center relative z-50"
-      style={{
-        backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-        color: isDarkMode ? "#ffffff" : "#242625",
-      }}
+      className="fixed top-0 left-0 right-0 px-6 py-2 flex justify-between items-center relative z-50 shadow-md bg-[var(--bg)]"
+      style={{ color: "var(--text)" }}
     >
-      {/* زر القائمة واللوغو */}
+      {/* زر القائمة + اللوغو */}
       <div className="flex items-center gap-4">
         {!isSidebarOpen && (
           <button
             onClick={toggleSidebar}
-            style={{
-              color: isDarkMode ? "#ffffff" : "#242625",
-            }}
-            className="text-2xl hover:text-black transition flex-shrink-0"
+            className="text-2xl transition-colors duration-200 hover:text-[var(--primary)]"
+            style={{ color: "var(--text)" }}
           >
             <FiMenu />
           </button>
         )}
+
         <div
           className={`text-2xl font-bold transition-opacity ${
             isSidebarOpen ? "opacity-0" : "opacity-100"
           }`}
-          style={{
-            color: isDarkMode ? "#ffffff" : "#242625",
-          }}
         >
-          <div className="px-6 py-6 flex items-center">
+          <div className="py-2 flex items-center">
             <img
               src={isDarkMode ? "/darklogo.png" : "/logo.png"}
               alt="Qwikko Logo"
@@ -140,255 +154,244 @@ export default function Navbar({ isSidebarOpen, toggleSidebar, user }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-6">
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            style={{
-              backgroundColor: isDarkMode ? "#242625" : "#ffffff", // خلفية button
-              color: isDarkMode ? "#ffffff" : "#242625", // النص
-              border: `1px solid ${isDarkMode ? "#f9f9f9" : "#242625"}`, // الخط
-            }}
-            className="flex items-center gap-2 px-3 py-1 rounded-full transition"
+            className="flex items-center gap-2 px-3 py-1 rounded-md transition-colors duration-200 bg-[var(--bg)] "
+            style={{ color: "var(--text)" }}
           >
-            {getAvatar()}
-            <span>{user?.company_name || "Guest"}</span>
+            <FaUser className="text-[var(--text)]" />
+            <span className="font-medium">{user?.company_name || "Guest"}</span>
             <FiChevronDown
               className={`transition-transform ${
                 isDropdownOpen ? "rotate-180" : ""
               }`}
-              style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
+              style={{ color: "var(--text)" }}
             />
           </button>
 
           {isDropdownOpen && (
             <div
-              className="absolute right-0 mt-2 w-48 shadow-lg rounded-xl overflow-hidden z-50"
-              style={{
-                backgroundColor: isDarkMode ? "#666666" : "#ffffff",
-                border: `1px solid ${isDarkMode ? "#f9f9f9" : "#242625"}`,
-                color: isDarkMode ? "#ffffff" : "#242625",
-              }}
+              className="absolute right-0 mt-2 w-56 rounded-xl overflow-hidden shadow-lg border bg-[var(--bg)]"
+              style={{ borderColor: "var(--border)", color: "var(--text)" }}
             >
-              {/* Profile Button */}
+              {/* Profile */}
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
-                  setTimeout(() => {
-                    navigate("/delivery/dashboard/getProfile");
-                  }, 0);
+                  navigate("/delivery/dashboard/getProfile");
                 }}
-                className="flex items-center gap-3 w-full text-left px-4 py-3 transition hover:opacity-80"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
+                className="flex items-center gap-3 w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-[var(--hover)]"
+                style={{ color: "var(--text)" }}
               >
-                <FiUser style={{ color: isDarkMode ? "#ffffff" : "#242625" }} />
+                <FiUser />
                 <span>Profile</span>
               </button>
 
-              {/* Toggle Theme Button */}
+              {/* Toggle Theme */}
               <button
                 onClick={() => {
-                  setIsDropdownOpen(false); // يغلق أولًا
-                  setTimeout(() => {
-                    dispatch(toggleTheme()); // بعد الإغلاق مباشرة
-                  }, 0);
+                  setIsDropdownOpen(false);
+                  dispatch(toggleTheme());
                 }}
-                className="flex items-center gap-3 w-full text-left px-4 py-3 transition hover:opacity-80"
+                className="flex items-center gap-3 w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-[var(--hover)]"
+                style={{ color: "var(--text)" }}
               >
-                {isDarkMode ? (
-                  <>
-                    <FiSun
-                      style={{
-                        color: isDarkMode ? "#ffffff" : "#242625",
-                      }}
-                    />
-                    <span
-                      style={{
-                        backgroundColor: isDarkMode ? "#666666" : "#ffffff",
-                      }}
-                    >
-                      Light Mode
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <FiMoon
-                      style={{
-                        color: isDarkMode ? "#ffffff" : "#242625",
-                      }}
-                    />
-                    <span
-                      style={{
-                        backgroundColor: isDarkMode ? "#666666" : "#ffffff",
-                      }}
-                    >
-                      Dark Mode
-                    </span>
-                  </>
-                )}
+                {isDarkMode ? <FiSun /> : <FiMoon />}
+                <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* الإشعارات */}
-        <div className="flex items-center gap-4">
-          {/* إشعارات */}
+        {/* ===== Notifications (Customer-like design, fixed) ===== */}
+        <div className="relative">
           <button
-            onClick={() => setShowNotifications(true)}
-            style={{
-              color: isDarkMode ? "#ffffff" : "#242625",
+            onClick={async () => {
+              setShowNotifications((prev) => !prev);
+              if (!showNotifications) {
+                try {
+                  const res = await fetch(
+                    "http://localhost:3000/api/notifications",
+                    {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }
+                  );
+                  if (!res.ok) throw new Error("Failed to fetch notifications");
+                  const data = await res.json();
+                  setNotifications(data);
+                } catch (err) {
+                  console.error("Error fetching notifications:", err);
+                }
+              }
             }}
-            className="text-2xl hover:text-black transition relative"
+            className="text-2xl transition-colors duration-200 hover:text-[var(--primary)]"
+            style={{ color: "var(--text)" }}
+            aria-label="Notifications"
+            title="Notifications"
           >
-            <FiBell />
+            <FaBell />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1">
+              <span className="absolute -top-1 -right-1 bg-[var(--error)] text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
           </button>
 
           {showNotifications && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]">
+            <div className="fixed inset-0 z-[999] flex items-start justify-end">
               <div
-                className=" p-6 rounded-xl shadow-lg w-90%] max-w-[900px] max-h-[70vh] overflow-y-auto relative"
-                style={{
-                  backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
+                className="absolute inset-0 z-0  backdrop-blur-sm"
+                onClick={() => setShowNotifications(false)}
+              />
+
+              {/* Panel */}
+              <div
+                className="relative z-10 mt-16 mr-4 bg-[var(--bg)] rounded-xl shadow-2xl w-[380px] max-h-[75vh] overflow-hidden border"
+                style={{ borderColor: "var(--border)", color: "var(--text)" }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex justify-between items-center mb-4">
-                  <h2
-                    className="text-xl font-semibold"
-                    style={{
-                      color: isDarkMode ? "#ffffff" : "#242625",
-                    }}
-                  >
-                    Notifications
-                  </h2>
-                  <div className="flex gap-2 items-center">
-                    <button
-                      onClick={markAllAsRead}
-                      className=" hover:underline text-sm"
-                      style={{
-                        color: isDarkMode ? "#ffffff" : "#242625",
-                      }}
-                    >
-                      Mark All as Read
-                    </button>
+                {/* Header */}
+                <div
+                  className="px-5 py-4 border-b bg-[var(--bg)]"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <FaBell /> Notifications
+                      {unreadCount > 0 && (
+                        <span className="ml-2 bg-[var(--primary)] text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </h3>
                     <button
                       onClick={() => setShowNotifications(false)}
-                      className=" hover:text-gray-700 text-xl font-bold"
-                      style={{
-                        color: isDarkMode ? "#ffffff" : "#242625",
-                      }}
+                      className="text-lg font-bold opacity-70 hover:opacity-100"
+                      style={{ color: "var(--text)" }}
+                      aria-label="Close notifications"
+                      title="Close"
                     >
                       ✕
                     </button>
                   </div>
                 </div>
 
-                {notifications.length === 0 ? (
-                  <p
-                    style={{
-                      color: isDarkMode ? "#ffffff" : "#242625",
-                    }}
-                  >
-                    No notifications yet.
-                  </p>
-                ) : (
-                  <ul>
-                    {notifications.map((n) => (
-                      <li
-                        key={n.id}
-                        className="p-4 border-b flex justify-between items-start rounded-lg transition-colors"
-                        style={{
-                          backgroundColor: !n.read_status
-                            ? isDarkMode
-                              ? "#2a3b5f" // خلفية الإشعارات غير المقروءة في الدارك
-                              : "#e8f1ff" // خلفية الإشعارات غير المقروءة في اللايت
-                            : isDarkMode
-                            ? "#242625" // خلفية العادية في الدارك
-                            : "#ffffff", // خلفية العادية في اللايت
-                          color: isDarkMode ? "#ffffff" : "#242625",
-                          borderColor: isDarkMode ? "#444" : "#ddd",
-                        }}
-                      >
-                        <div>
-                          <p
-                            style={{
-                              fontWeight: !n.read_status ? "600" : "400",
-                            }}
-                          >
-                            {n.title}
-                          </p>
-                          <p style={{ fontSize: "0.9rem", opacity: 0.8 }}>
-                            {n.message}
-                          </p>
-                        </div>
+                {/* List */}
+                <div className="max-h-[55vh] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="py-12 px-6 text-center text-[var(--light-gray)]">
+                      No notifications yet.
+                    </div>
+                  ) : (
+                    <ul
+                      className="divide-y"
+                      style={{ borderColor: "var(--border)" }}
+                    >
+                      {notifications.slice(0, visibleCount).map((n) => {
+                        const isUnread = !n.read_status;
+                        const ts =
+                          n.created_at ??
+                          n.createdAt ??
+                          n.timestamp ??
+                          Date.now();
 
-                        {!n.read_status && (
-                          <button
+                        return (
+                          <li
+                            key={n.id}
                             onClick={async () => {
-                              try {
-                                const res = await fetch(
-                                  "http://localhost:3000/api/notifications/mark-read",
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                      Authorization: `Bearer ${token}`,
-                                    },
-                                    body: JSON.stringify({ ids: [n.id] }),
-                                  }
-                                );
-                                if (!res.ok)
-                                  throw new Error(
-                                    "Failed to mark notification as read"
+                              // الضغط على الإشعار = تعليم مقروء وتحديث الحالة+العداد
+                              if (isUnread) {
+                                try {
+                                  const res = await fetch(
+                                    "http://localhost:3000/api/notifications/mark-read",
+                                    {
+                                      method: "POST",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${token}`,
+                                      },
+                                      body: JSON.stringify({ ids: [n.id] }),
+                                    }
                                   );
-                                await res.json();
-
-                                // ✅ تحديث الحالة محليًا
-                                setNotifications((prev) =>
-                                  prev.map((notif) =>
-                                    notif.id === n.id
-                                      ? { ...notif, read_status: true }
-                                      : notif
-                                  )
-                                );
-                                setUnreadCount((prev) => Math.max(prev - 1, 0));
-                              } catch (err) {
-                                console.error(err);
+                                  if (!res.ok)
+                                    throw new Error(
+                                      "Failed to mark notification as read"
+                                    );
+                                  await res.json();
+                                  setNotifications((prev) =>
+                                    prev.map((notif) =>
+                                      notif.id === n.id
+                                        ? { ...notif, read_status: true }
+                                        : notif
+                                    )
+                                  );
+                                  setUnreadCount((prev) =>
+                                    Math.max(prev - 1, 0)
+                                  );
+                                } catch (err) {
+                                  console.error(err);
+                                }
                               }
                             }}
-                            className="ml-4 inline-flex items-center gap-1 text-sm font-medium px-3 py-1 rounded-full transition-colors duration-200 hover:scale-105"
+                            className={`p-4 transition-colors duration-200 cursor-pointer hover:bg-[var(--hover)] ${
+                              isUnread ? "border-l-4" : ""
+                            }`}
                             style={{
-                              backgroundColor: isDarkMode
-                                ? "#2a3b5f"
-                                : "#e8f1ff",
-                              color: isDarkMode ? "#ffffff" : "#242625",
-                              border: `1px solid ${
-                                isDarkMode ? "#5f6e68" : "#a0c4ff"
-                              }`,
-                              cursor: "pointer",
+                              borderLeftColor: isUnread
+                                ? "var(--primary)"
+                                : "transparent",
+                              background: isUnread
+                                ? "color-mix(in oklab, var(--primary) 5%, transparent)"
+                                : "transparent",
                             }}
                           >
-                            <FiCheck /> Mark as read
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p
+                                  className="font-semibold text-sm"
+                                  style={{
+                                    color: isUnread
+                                      ? "var(--primary)"
+                                      : "var(--text)",
+                                  }}
+                                >
+                                  {n.title}
+                                </p>
+                                <p className="text-sm opacity-80 break-words">
+                                  {n.message}
+                                </p>
+                                <div className="mt-2 text-xs text-[var(--light-gray)]">
+                                  {formatInTimeZone(
+                                    new Date(ts),
+                                    "Asia/Amman",
+                                    "MMM dd, yyyy 'at' hh:mm a"
+                                  )}
+                                </div>
+                              </div>
 
+                              {/* Badge بدل زر Mark as read */}
+                              {isUnread && (
+                                <span className="flex-shrink-0 bg-[var(--primary)] text-white text-[10px] px-2 py-0.5 rounded-full h-5 leading-5">
+                                  New
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Footer */}
                 {notifications.length > visibleCount && (
-                  <div className="flex justify-center mt-2">
+                  <div className="px-5 py-3 border-t bg-[var(--bg)] flex justify-center">
                     <button
                       onClick={() => setVisibleCount((prev) => prev + 5)}
-                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+                      className="px-4 py-2 rounded-lg font-medium transition hover:scale-[1.02] active:scale-95"
+                      style={{ background: "var(--button)", color: "#fff" }}
                     >
                       Load More
                     </button>

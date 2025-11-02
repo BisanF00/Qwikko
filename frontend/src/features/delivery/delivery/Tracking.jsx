@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTrackingOrder, getDeliveryEstimate } from "./DeliveryAPI";
+import { getTrackingOrder, getDeliveryEstimate } from "./Api/DeliveryAPI";
 import MapView from "../../../components/MapView";
 import {
   FaUser,

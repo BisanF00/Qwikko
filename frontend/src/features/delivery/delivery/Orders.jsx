@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+// src/features/delivery/delivery/OrdersList.jsx
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchCompanyOrders,
   updateOrderStatus,
   updateOrderPaymentStatus,
-} from "./DeliveryAPI";
+} from "./Api/DeliveryAPI";
 import { FaBox, FaTimes } from "react-icons/fa";
 import { useSelector } from "react-redux";
 
@@ -24,42 +25,102 @@ const STATUS_LABELS = {
 };
 
 export default function OrdersList() {
-  const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState([]); // كل ما جُلب حتى الآن (append)
+  const [loading, setLoading] = useState(true); // الشحنة الأولى
+  const [loadingMore, setLoadingMore] = useState(false);
   const [message, setMessage] = useState("");
   const [currentOrderId, setCurrentOrderId] = useState(null);
   const [currentStatus, setCurrentStatus] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [filter, setFilter] = useState("all");
+
+  // ✅ خلّيه ثابت ومتناسق بكل الطلبات
+  const [limit] = useState(10);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit,
+    total: 0,
+    totalPages: 1,
+    hasMore: false,
+  });
+
   const navigate = useNavigate();
-  const [visibleCount, setVisibleCount] = useState(6);
-  const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
+  const isDarkMode = useSelector((state) => state.deliveryTheme?.darkMode);
 
   useEffect(() => {
-    const loadOrders = async () => {
+    (async () => {
       try {
-        const data = await fetchCompanyOrders();
-        const validOrders = data.filter((o) =>
-          // eslint-disable-next-line no-prototype-builtins
-          STATUS_FLOW.hasOwnProperty(o.status)
+        setLoading(true);
+        const data = await fetchCompanyOrders({ page: 1, limit }); // نفس limit
+        console.log("Orders first page:", data);
+        setOrders(data.orders || []);
+        setPagination(
+          data.pagination || {
+            page: 1,
+            limit,
+            total: (data.orders || []).length,
+            totalPages: 1,
+            hasMore: false,
+          }
         );
-        setOrders(validOrders);
-        setFilteredOrders(validOrders);
+        setPage(1);
       } catch (err) {
+        console.error(err);
         setMessage("❌ " + err.message);
       } finally {
         setLoading(false);
       }
-    };
-    loadOrders();
-  }, []);
+    })();
+  }, [limit]);
 
-  useEffect(() => {
-    if (filter === "all") setFilteredOrders(orders);
-    else setFilteredOrders(orders.filter((o) => o.status === filter));
-  }, [filter, orders]);
+  // 🔢 تحميل صفحة محددة (استبدال القائمة بدل append)
+  const loadSpecificPage = async (pageNum) => {
+    if (pageNum < 1 || pageNum > (pagination.totalPages || 1)) return;
+    try {
+      setLoading(true);
+      const data = await fetchCompanyOrders({ page: pageNum, limit });
+      setOrders(data.orders || []);
+      const pg = data.pagination || {
+        page: pageNum,
+        limit,
+        total: (data.orders || []).length,
+        totalPages: 1,
+        hasMore: false,
+      };
+      setPagination(pg);
+      setPage(pg.page || pageNum);
+    } catch (err) {
+      setMessage("❌ " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load More من السيرفر (append)
+  const loadMore = async () => {
+    if (!pagination.hasMore || loadingMore) return;
+    try {
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      const data = await fetchCompanyOrders({ page: nextPage, limit });
+      setOrders((prev) => [...prev, ...(data.orders || [])]);
+      const pg = data.pagination || pagination;
+      setPagination(pg);
+      setPage(pg.page || nextPage);
+    } catch (err) {
+      setMessage("❌ " + err.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // فلترة محليّة
+  const filteredOrders = useMemo(() => {
+    if (filter === "all") return orders;
+    return orders.filter((o) => o.status === filter);
+  }, [orders, filter]);
 
   const openStatusModal = (orderId, status) => {
     setCurrentOrderId(orderId);
@@ -68,10 +129,10 @@ export default function OrdersList() {
   };
 
   const handleUpdateStatus = async () => {
-    const nextStatuses = STATUS_FLOW[currentStatus];
-    if (!nextStatuses || nextStatuses.length === 0) return;
-
+    const nextStatuses = STATUS_FLOW[currentStatus] || [];
+    if (nextStatuses.length === 0) return;
     const newStatus = nextStatuses[0];
+
     try {
       setUpdating(true);
       await updateOrderStatus(currentOrderId, newStatus);
@@ -94,11 +155,10 @@ export default function OrdersList() {
     try {
       const result = await updateOrderPaymentStatus(orderId, "PAID");
       alert(result.message);
-
       setOrders((prev) =>
         prev.map((o) =>
           o.id === orderId
-            ? { ...o, payment_status: result.order.payment_status }
+            ? { ...o, payment_status: result.order?.payment_status ?? "PAID" }
             : o
         )
       );
@@ -107,83 +167,70 @@ export default function OrdersList() {
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[var(--bg)]">
+      <div
+        className="flex items-center justify-center min-h-screen"
+        style={{ backgroundColor: "var(--bg)" }}
+      >
         <div
           className="w-10 h-10 border-[6px] rounded-full animate-spin"
           style={{
-            borderColor: "var(--button)", // اللون من ملف الألوان
-            borderTopColor: "transparent", // عشان يعطي تأثير الدوران
+            borderColor: "var(--button)",
+            borderTopColor: "transparent",
           }}
-        ></div>
+        />
       </div>
     );
-  if (!orders.length)
-    return <p className="text-center mt-10"> No orders found.</p>;
+  }
+
+  if (!orders.length) {
+    return (
+      <p className="text-center mt-10" style={{ color: "var(--text)" }}>
+        {message || "No orders found."}
+      </p>
+    );
+  }
 
   return (
     <div
-      className="w-full mx-auto mt-10 p-6  rounded-2xl"
-      style={{
-        backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-        color: isDarkMode ? "#ffffff" : "#242625",
-      }}
+      className="w-full mx-auto mt-10 p-6 rounded-2xl"
+      style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
     >
-      <h2 className="text-3xl font-extrabold  mb-6 text-center flex items-center justify-center gap-2">
-        <FaBox
-          className="text-3xl"
-          style={{
-            backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-            color: isDarkMode ? "#ffffff" : "#242625",
-          }}
-        />{" "}
-        Company Orders
+      <h2 className="text-3xl font-extrabold mb-6 text-center flex items-center justify-center gap-2">
+        <FaBox className="text-3xl" style={{ color: "var(--text)" }} /> Company
+        Orders
       </h2>
 
       {message && (
         <p
-          className="text-center mb-4 font-medium  transition-all duration-300"
-          style={{
-            color: isDarkMode ? "#ffffff" : "#242625",
-          }}
+          className="text-center mb-4 font-medium transition-all duration-300"
+          style={{ color: "var(--text)" }}
         >
           {message}
         </p>
       )}
 
+      {/* Tabs */}
       <div className="mb-6 flex flex-wrap gap-3 justify-center">
         {Object.keys(STATUS_LABELS).map((key) => (
           <button
             key={key}
-            onClick={() => {
-              setFilter(key);
-              setVisibleCount(3);
-            }}
+            onClick={() => setFilter(key)}
             className="px-4 py-1 rounded-2xl transition-all duration-300 border shadow-md"
             style={{
               backgroundColor:
-                filter === key
-                  ? isDarkMode
-                    ? "#307A59" // dark mode active button
-                    : "#307A59" // light mode active button
-                  : isDarkMode
-                  ? "#666666" // dark mode inactive button
-                  : "#ffffff", // light mode inactive button
-              color:
-                filter === key
-                  ? "#ffffff" // active text is white
-                  : isDarkMode
-                  ? "#ffffff" // dark mode inactive text
-                  : "#242625", // light mode inactive text
-              borderColor:
-                filter === key
-                  ? isDarkMode
-                    ? "#307A59"
-                    : "#307A59"
-                  : isDarkMode
-                  ? "#999999"
-                  : "#d1d5db", // gray-300
+                filter === key ? "var(--button)" : "var(--textbox)",
+              color: filter === key ? "#ffffff" : "var(--text)",
+              borderColor: filter === key ? "var(--button)" : "var(--border)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor =
+                filter === key ? "var(--button-hover)" : "var(--hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor =
+                filter === key ? "var(--button)" : "var(--textbox)";
             }}
           >
             {STATUS_LABELS[key]}
@@ -193,118 +240,66 @@ export default function OrdersList() {
 
       {/* Orders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredOrders.slice(0, visibleCount).map((o) => (
+        {filteredOrders.map((o) => (
           <div
             key={o.id}
-            className=" p-5 rounded-2xl shadow-md  flex flex-col justify-between"
-            style={{
-              backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-            }}
+            className="p-5 rounded-2xl shadow-md flex flex-col justify-between"
+            style={{ backgroundColor: "var(--textbox)" }}
           >
             <div>
               <h3
-                className="text-xl font-bold  mb-2"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
+                className="text-xl font-bold mb-2"
+                style={{ color: "var(--text)" }}
               >
                 Order #{o.id}
               </h3>
-              <p
-                className="text-sm mb-1"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
-              >
+
+              <p className="text-sm mb-1" style={{ color: "var(--text)" }}>
                 Customer:{" "}
-                <strong
-                  style={{
-                    color: isDarkMode ? "#ffffff" : "#242625",
-                  }}
-                >
+                <strong style={{ color: "var(--text)" }}>
                   {o.customer_id}
                 </strong>
               </p>
-              <p
-                className="text-sm mb-1"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
-              >
+
+              <p className="text-sm mb-1" style={{ color: "var(--text)" }}>
                 Amount:{" "}
-                <strong
-                  style={{
-                    color: isDarkMode ? "#ffffff" : "#242625",
-                  }}
-                >
+                <strong style={{ color: "var(--text)" }}>
                   {o.total_amount} $
                 </strong>
               </p>
-              <p
-                className="text-sm mb-1"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
-              >
+
+              <p className="text-sm mb-1" style={{ color: "var(--text)" }}>
                 Status:{" "}
-                <strong
-                  className="capitalize "
-                  style={{
-                    color: isDarkMode ? "#ffffff" : "#242625",
-                  }}
-                >
+                <strong className="capitalize" style={{ color: "var(--text)" }}>
                   {o.status.replace(/_/g, " ")}
                 </strong>
               </p>
-              <p
-                className="text-sm mb-1"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
-              >
+
+              <p className="text-sm mb-1" style={{ color: "var(--text)" }}>
                 Payment:{" "}
-                <strong
-                  style={{
-                    color: isDarkMode ? "#ffffff" : "#242625",
-                  }}
-                >
+                <strong style={{ color: "var(--text)" }}>
                   {o.payment_status}
                 </strong>
               </p>
-              {/* <p
-                className="text-sm  mb-1"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
-              >
-                Address:{" "}
-                <strong
-                  style={{
-                    color: isDarkMode ? "#ffffff" : "#242625",
-                  }}
-                >
-                  {o.shipping_address}
-                </strong>
-              </p> */}
-              <p
-                className="text-xs  mt-2"
-                style={{
-                  color: isDarkMode ? "#ffffff" : "#242625",
-                }}
-              >
-                Ordered At :{new Date(o.created_at).toLocaleString()}
+
+              <p className="text-xs mt-2" style={{ color: "var(--text)" }}>
+                Ordered At : {new Date(o.created_at).toLocaleString()}
               </p>
             </div>
 
             <div className="mt-4 flex gap-2">
-              {STATUS_FLOW[o.status].length > 0 && (
+              {STATUS_FLOW[o.status]?.length > 0 && (
                 <button
                   onClick={() => openStatusModal(o.id, o.status)}
                   className="flex-1 py-2 rounded-lg transition-all duration-300"
-                  style={{
-                    backgroundColor: isDarkMode ? "#307A59" : "#307A59", // نفس اللون الأخضر
-                    color: "#ffffff", // نص أبيض
-                  }}
+                  style={{ backgroundColor: "var(--button)", color: "#ffffff" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                      "var(--button-hover)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "var(--button)")
+                  }
                 >
                   {updating ? "Updating..." : "Update Status"}
                 </button>
@@ -313,23 +308,42 @@ export default function OrdersList() {
               <button
                 onClick={() => navigate(`/delivery/dashboard/tracking/${o.id}`)}
                 className="flex-1 py-2 rounded-lg transition-all duration-300"
-                style={{
-                  backgroundColor: isDarkMode ? "#307A59" : "#307A59", // نفس لون الأزرار
-                  color: "#ffffff",
-                }}
+                style={{ backgroundColor: "var(--button)", color: "#ffffff" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor =
+                    "var(--button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "var(--button)")
+                }
               >
                 Track
               </button>
+
               <button
                 onClick={() => handlePaymentUpdate(o.id)}
-                disabled={o.payment_status === "paid"}
-                className="py-1 px-3 rounded"
+                disabled={(o.payment_status || "").toLowerCase() === "paid"}
+                className="py-1 px-3 rounded transition-all duration-300"
                 style={{
-                  backgroundColor: isDarkMode ? "#307A59" : "#307A59",
+                  backgroundColor: "var(--button)",
                   color: "#ffffff",
-                  opacity: o.payment_status === "paid" ? 0.5 : 1,
+                  opacity:
+                    (o.payment_status || "").toLowerCase() === "paid" ? 0.5 : 1,
                   cursor:
-                    o.payment_status === "paid" ? "not-allowed" : "pointer",
+                    (o.payment_status || "").toLowerCase() === "paid"
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  if ((o.payment_status || "").toLowerCase() !== "paid") {
+                    e.currentTarget.style.backgroundColor =
+                      "var(--button-hover)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if ((o.payment_status || "").toLowerCase() !== "paid") {
+                    e.currentTarget.style.backgroundColor = "var(--button)";
+                  }
                 }}
               >
                 Mark as Paid
@@ -339,22 +353,104 @@ export default function OrdersList() {
         ))}
       </div>
 
-      {/* Load More Button */}
-      {visibleCount < filteredOrders.length && (
-        <div className="text-center mt-6">
+      {/* Pagination Footer (النص القديم) */}
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <span className="text-sm" style={{ color: "var(--text)" }}>
+          Page {pagination.page} of {pagination.totalPages} — {pagination.total}{" "}
+          orders
+        </span>
+      </div>
+
+      {/* 🔘 Pagination Buttons */}
+      <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+        <button
+          onClick={() => loadSpecificPage(page - 1)}
+          disabled={page <= 1}
+          className="px-3 py-1 rounded-lg border transition-all duration-300"
+          style={{
+            backgroundColor: page <= 1 ? "var(--textbox)" : "var(--button)",
+            color: page <= 1 ? "var(--light-gray)" : "#fff",
+            cursor: page <= 1 ? "not-allowed" : "pointer",
+          }}
+        >
+          Prev
+        </button>
+
+        {Array.from(
+          { length: pagination.totalPages || 1 },
+          (_, i) => i + 1
+        ).map((num) => (
           <button
-            onClick={() => setVisibleCount((prev) => prev + 3)}
-            className="px-6 py-2 rounded-lg transition-all duration-300"
+            key={num}
+            onClick={() => loadSpecificPage(num)}
+            className="px-3 py-1 rounded-lg border transition-all duration-300"
             style={{
-              backgroundColor: isDarkMode ? "#307A59" : "#307A59", // زر أخضر من الثيم
-              color: "#ffffff", // نص أبيض
+              backgroundColor:
+                num === page ? "var(--button)" : "var(--textbox)",
+              color: num === page ? "#fff" : "var(--text)",
+              borderColor: num === page ? "var(--button)" : "var(--border)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor =
+                num === page ? "var(--button-hover)" : "var(--hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor =
+                num === page ? "var(--button)" : "var(--textbox)";
             }}
           >
-            Load More
+            {num}
+          </button>
+        ))}
+
+        <button
+          onClick={() => loadSpecificPage(page + 1)}
+          disabled={page >= (pagination.totalPages || 1)}
+          className="px-3 py-1 rounded-lg border transition-all duration-300"
+          style={{
+            backgroundColor:
+              page >= (pagination.totalPages || 1)
+                ? "var(--textbox)"
+                : "var(--button)",
+            color:
+              page >= (pagination.totalPages || 1)
+                ? "var(--light-gray)"
+                : "#fff",
+            cursor:
+              page >= (pagination.totalPages || 1) ? "not-allowed" : "pointer",
+          }}
+        >
+          Next
+        </button>
+      </div>
+
+      {/* Load More (تبقى كما هي) */}
+      {pagination.hasMore && (
+        <div className="text-center mt-3">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="px-6 py-2 rounded-lg transition-all duration-300"
+            style={{
+              backgroundColor: "var(--button)",
+              color: "#ffffff",
+              opacity: loadingMore ? 0.7 : 1,
+            }}
+            onMouseEnter={(e) =>
+              !loadingMore &&
+              (e.currentTarget.style.backgroundColor = "var(--button-hover)")
+            }
+            onMouseLeave={(e) =>
+              !loadingMore &&
+              (e.currentTarget.style.backgroundColor = "var(--button)")
+            }
+          >
+            {loadingMore ? "Loading..." : "Load More"}
           </button>
         </div>
       )}
 
+      {/* Modal */}
       {showModal && (
         <div
           style={{
@@ -369,8 +465,8 @@ export default function OrdersList() {
         >
           <div
             style={{
-              backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-              color: isDarkMode ? "#ffffff" : "#242625",
+              backgroundColor: "var(--textbox)",
+              color: "var(--text)",
               padding: "1.5rem",
               borderRadius: "1rem",
               boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
@@ -386,18 +482,14 @@ export default function OrdersList() {
                 position: "absolute",
                 top: "0.75rem",
                 right: "0.75rem",
-                color: isDarkMode ? "#f0f2f1" : "#555",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
               }}
+              aria-label="Close"
+              title="Close"
             >
-              <FaTimes
-                size={20}
-                style={{
-                  color: isDarkMode ? "#f0f2f1" : "#555",
-                }}
-              />
+              <FaTimes size={20} style={{ color: "var(--text)" }} />
             </button>
 
             <h3
@@ -405,23 +497,18 @@ export default function OrdersList() {
                 fontSize: "1.25rem",
                 fontWeight: "bold",
                 marginBottom: "1rem",
-                color: isDarkMode ? "#ffffff" : "#242625",
+                color: "var(--text)",
               }}
             >
               Edit Order Status
             </h3>
 
-            <p
-              style={{
-                marginBottom: "1rem",
-                color: isDarkMode ? "#f0f2f1" : "#444",
-              }}
-            >
+            <p style={{ marginBottom: "1rem", color: "var(--text)" }}>
               Current status:{" "}
               <strong>{currentStatus.replace(/_/g, " ")}</strong>
             </p>
 
-            {STATUS_FLOW[currentStatus].length > 0 ? (
+            {STATUS_FLOW[currentStatus]?.length > 0 ? (
               <button
                 onClick={handleUpdateStatus}
                 disabled={updating}
@@ -431,18 +518,20 @@ export default function OrdersList() {
                   borderRadius: "0.5rem",
                   fontWeight: "600",
                   color: "#fff",
-                  backgroundColor: updating ? "#999" : "#307A59",
+                  backgroundColor: updating
+                    ? "var(--light-gray)"
+                    : "var(--button)",
                   cursor: updating ? "not-allowed" : "pointer",
-                  transform: updating ? "none" : "scale(1)",
                   transition: "all 0.3s ease",
                 }}
                 onMouseEnter={(e) => {
                   if (!updating)
-                    e.currentTarget.style.backgroundColor = "#256d4d";
+                    e.currentTarget.style.backgroundColor =
+                      "var(--button-hover)";
                 }}
                 onMouseLeave={(e) => {
                   if (!updating)
-                    e.currentTarget.style.backgroundColor = "#307A59";
+                    e.currentTarget.style.backgroundColor = "var(--button)";
                 }}
               >
                 {updating
@@ -452,12 +541,7 @@ export default function OrdersList() {
                       .toUpperCase()}`}
               </button>
             ) : (
-              <p
-                style={{
-                  color: isDarkMode ? "#ccc" : "#777",
-                  textAlign: "center",
-                }}
-              >
+              <p style={{ color: "var(--light-gray)", textAlign: "center" }}>
                 No further status change allowed.
               </p>
             )}

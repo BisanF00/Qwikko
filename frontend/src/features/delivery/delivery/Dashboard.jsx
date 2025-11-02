@@ -1,3 +1,5 @@
+// Delivery/Dashboard.jsx أو DashboardLayout.jsx
+
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Outlet } from "react-router-dom";
@@ -6,19 +8,19 @@ import Navbar from "../Layout/Navbar";
 import Footer from "../Layout/Footer";
 import ChatBot from "../Layout/ChatBot";
 import { setUserFromToken } from "../auth/authSlice";
-import { fetchDeliveryProfile } from "./DeliveryAPI";
-import { Bot, X } from "lucide-react";
+import { fetchDeliveryProfile } from "./Api/DeliveryAPI";
+import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaRobot, FaBrain, FaComments } from "react-icons/fa";
+import { FaRobot } from "react-icons/fa";
 
 export default function DashboardLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  // ❗️مش رح نستخدم فتح/إغلاق: السايدبار دايمًا ظاهر
   const dispatch = useDispatch();
-
   const { user } = useSelector((state) => state.auth);
   const currentUser = useSelector((state) => state.deliveryAuth?.user);
   const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
@@ -39,28 +41,33 @@ export default function DashboardLayout() {
     }
   }, [dispatch]);
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const toggleChat = () => setIsChatOpen(!isChatOpen);
+  const toggleChat = () => setIsChatOpen((v) => !v);
+
+  // ✅ خلي العرض ثابت ويستخدم في الإزاحة
+  const SIDEBAR_W = "16rem"; // مطابق لـ w-64 في Sidebar الحالي
 
   return (
     <div className={isDarkMode ? "dark" : ""}>
-      <div className="flex h-screen w-full">
-        <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+      <div className="flex min-h-screen w-full">
+        {/* سايدبار دايمًا ظاهر */}
+        <Sidebar isOpen={true} toggleSidebar={() => {}} />
 
+        {/* نحرك الكونتنت يمينًا بنفس عرض السايدبار */}
         <div
-          className={`flex-1 flex flex-col transition-all duration-300 ${
-            isSidebarOpen ? "ml-64" : "ml-0"
-          }`}
+          className="flex-1 flex flex-col transition-all duration-300"
+          style={{ marginLeft: SIDEBAR_W }}
         >
+          {/* لو النافبار Fixed عندك، خليه بدون إزاحة إضافية هون
+              (إحنا إزحنا الكونتنت كله بالـ marginLeft) */}
           <Navbar
-            toggleSidebar={toggleSidebar}
-            isSidebarOpen={isSidebarOpen}
+            toggleSidebar={() => {}}
+            isSidebarOpen={true}
             user={user || { name: "Guest" }}
           />
 
-          {/* الخلفية من var(--bg) بدل قيم ثابتة */}
+          {/* اترك مسافة تحت النافبار لو هو fixed (ارتفاع ~64px) */}
           <main
-            className="flex-1 p-6 overflow-auto"
+            className="flex-1 p-6 overflow-auto pt-16"
             style={{ backgroundColor: "var(--bg)" }}
           >
             <Outlet />
@@ -68,12 +75,13 @@ export default function DashboardLayout() {
 
           <Footer />
 
+          {/* زر الشات */}
           <button
             onClick={toggleChat}
             className="fixed bottom-20 right-15 p-4 rounded-full shadow-lg transition flex items-center justify-center z-50"
             style={{
               backgroundColor: "var(--button)",
-              color:"#ffffff",
+              color: "#ffffff",
               boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
               border: "none",
             }}
@@ -106,13 +114,12 @@ export default function DashboardLayout() {
                   <X size={24} />
                 </button>
 
-                {/* العنوان: شلت border-b نهائيًا واستبدلته بظل خفيف */}
                 <h2
                   className="text-base font-semibold flex items-center gap-2 px-4 py-3"
                   style={{
                     backgroundColor: "var(--bg)",
                     color: "var(--text)",
-                    boxShadow: "0 1px 8px rgba(0,0,0,0.06)", // ظل بدل الخط
+                    boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
                   }}
                 >
                   <FaRobot
@@ -122,7 +129,6 @@ export default function DashboardLayout() {
                   Qwikko Chatbot
                 </h2>
 
-                {/* جسم المحادثة: خلفية من --bg */}
                 <div
                   className="flex-grow overflow-auto p-2"
                   style={{ backgroundColor: "var(--bg)" }}
