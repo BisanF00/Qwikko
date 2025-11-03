@@ -365,11 +365,12 @@ return (
     </div>
 
     {/* Navbar */}
-    <nav className="w-full bg-[var(--bg)] shadow-md flex items-center px-6 py-3 z-40 relative">
-      {/* Sidebar Toggle */}
+    <nav className={`w-full sticky shadow-md flex items-center px-6 py-3 z-40 relative ${
+    themeMode === 'dark' ? 'bg-[var(--div)]' : "bg-gradient-to-br from-[var(--button)] to-gray-700" 
+  }`}>
       <button
         onClick={toggleSidebar}
-        className="mr-6 text-[var(--text)] transition-colors duration-200 sidebar-toggle-button"
+        className="mr-6 text-[var(--textbox)] transition-colors duration-200 sidebar-toggle-button"
       >
         <FaBars size={22} />
       </button>
@@ -377,7 +378,7 @@ return (
       {/* Logo */}
       <Link to="/customer/home" className="mr-8 flex items-center">
         <img 
-          src={themeMode === "dark" ? "/LogoDark.png" : "/logo.png"} 
+          src={themeMode === "dark" ? "/LogoDark.png" : "/LogoDark.png"} 
           alt="Qwikko Logo" 
           className="h-9" 
         />
@@ -390,15 +391,15 @@ return (
           className="flex items-center space-x-2 cursor-pointer select-none"
           onClick={() => setIsOpen(!isOpen)}
         >
-          <FaMapMarkerAlt className="text-[var(--primary)] text-lg" />
+          <FaMapMarkerAlt className="text-[var(--error)] text-lg" />
           <div className="flex flex-col">
             <span className="text-xs text-[var(--light-gray)] font-medium uppercase tracking-wide">
               Deliver to
             </span>
-            <span className="text-sm text-[var(--text)] font-semibold flex items-center">
+            <span className="text-sm text-[var(--textbox)] font-semibold flex items-center">
               {profile?.address || "Select City"}
               <FaChevronDown
-                className={`ml-2 text-[var(--primary)] text-xs transition-transform duration-200 ${
+                className={`ml-2 text-[var(--bg)] text-xs transition-transform duration-200 ${
                   isOpen ? "rotate-180" : ""
                 }`}
               />
@@ -407,7 +408,7 @@ return (
         </div>
 
         {isOpen && (
-          <div className="absolute top-full left-6 mt-2 bg-[var(--div)] border border-[var(--border)] rounded-lg shadow-lg w-48 z-50">
+          <div className="absolute top-full left-6 mt-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg shadow-lg w-48 z-50">
             {cities.map((city) => (
               <div
                 key={city}
@@ -449,7 +450,7 @@ return (
         </button>
 
         {searchOpen && results.length > 0 && (
-          <div className="absolute top-full left-0 w-full bg-[var(--div)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 mt-1">
+          <div className="absolute top-full left-0 w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 mt-1">
             {results.map((item) => (
               <div
                 key={item.id}
@@ -468,7 +469,7 @@ return (
         {isLoggedIn && (
           <div ref={profileDropdownRef} className="relative">
             <button
-            className="flex items-center px-3 py-2 rounded-md text-[var(--text)] font-medium transition-all duration-200 "
+            className="flex items-center px-3 py-2 rounded-md text-[var(--textbox)] font-medium transition-all duration-200 "
             onClick={() => setProfileOpen((prev) => !prev)}
           >
             <FaUser className="mr-2" />{" "}
@@ -531,7 +532,8 @@ return (
         <div className="relative">
           <button
             onClick={handleCartClick}
-            className="text-[var(--text)]  transition-colors duration-200"
+            className="text-[var(--textbox)]  transition-colors duration-200"
+            data-cart-icon="true"
           >
             <FaShoppingCart size={22} />
           </button>
@@ -565,7 +567,7 @@ return (
                   }
                 }
               }}
-              className="text-[var(--text)]  transition-colors duration-200"
+              className="text-[var(--textbox)]  transition-colors duration-200"
             >
               <FaBell size={22} />
               {unreadCount > 0 && (
