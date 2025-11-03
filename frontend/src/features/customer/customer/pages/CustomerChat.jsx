@@ -10,28 +10,35 @@ const safeText = (v) => (v == null ? "" : typeof v === "string" ? v : JSON.strin
 const toUtcISO = (v) => {
   if (!v) return new Date().toISOString();
   if (v instanceof Date) return new Date(v.getTime()).toISOString();
-  const num = typeof v === "number" ? (v < 2e12 ? v * 1000 : v) : /^\d+$/.test(v) ? (Number(v) < 2e12 ? Number(v) * 1000 : Number(v)) : null;
+  const num =
+    typeof v === "number"
+      ? v < 2e12
+        ? v * 1000
+        : v
+      : /^\d+$/.test(v)
+      ? Number(v) < 2e12
+        ? Number(v) * 1000
+        : Number(v)
+      : null;
   return num ? new Date(num).toISOString() : new Date(v).toISOString();
 };
 
-// Format time as HH:MM for messages
 const formatMessageTime = (iso) => {
   try {
     const date = new Date(iso);
-    return new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     }).format(date);
   } catch {
     return "";
   }
 };
 
-// Formate date as 'DD MMM YYYY' for date separators
 const formatDate = (iso) => {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 };
 
 const CustomerChatPage = () => {
@@ -62,7 +69,9 @@ const CustomerChatPage = () => {
   const activeVendorIdRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  useEffect(() => { activeVendorIdRef.current = activeVendorId; }, [activeVendorId]);
+  useEffect(() => {
+    activeVendorIdRef.current = activeVendorId;
+  }, [activeVendorId]);
 
   const upsertConversation = (list, item) => {
     const key = Number(item.vendorId);
@@ -78,7 +87,9 @@ const CustomerChatPage = () => {
     const draft = {
       vendorId: Number(validInitialVendor),
       vendorName: safeText(location.state?.vendorName) || `Vendor #${validInitialVendor}`,
-      lastMessage: "", unread: 0, updatedAt: null
+      lastMessage: "",
+      unread: 0,
+      updatedAt: null,
     };
     setConversations((prev) => upsertConversation(prev, draft));
     setActiveVendorId(Number(validInitialVendor));
@@ -93,239 +104,413 @@ const CustomerChatPage = () => {
       try {
         const data = await chatApi.getCustomerConversations(customerId);
         const rows = Array.isArray(data) ? data : data?.conversations || [];
-        const mapped = rows.map((r) => {
-          const id = Number(r.vendor_user_id ?? r.user_id ?? r.vendor_id ?? r.vendorId ?? r.id);
-          if (!Number.isFinite(id) || id <= 0) return null;
-          return {
-            vendorId: id,
-            vendorName: safeText(r.vendor_name ?? r.vendorName) || `Vendor #${id}`,
-            lastMessage: safeText(r.last_message ?? r.lastMessage ?? ""),
-            unread: Number(r.unread_count ?? r.unread ?? 0),
-            updatedAt: r.last_at ?? r.updatedAt ?? r.updated_at ?? null
-          };
-        }).filter(Boolean).sort((a,b)=> new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+        const mapped = rows
+          .map((r) => {
+            const id = Number(r.vendor_user_id ?? r.user_id ?? r.vendor_id ?? r.vendorId ?? r.id);
+            if (!Number.isFinite(id) || id <= 0) return null;
+            return {
+              vendorId: id,
+              vendorName: safeText(r.vendor_name ?? r.vendorName) || `Vendor #${id}`,
+              lastMessage: safeText(r.last_message ?? r.lastMessage ?? ""),
+              unread: Number(r.unread_count ?? r.unread ?? 0),
+              updatedAt: r.last_at ?? r.updatedAt ?? r.updated_at ?? null,
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
         if (!cancelled) {
           setConversations(mapped);
-          mapped.forEach((c)=>joinRoom(c.vendorId));
+          mapped.forEach((c) => joinRoom(c.vendorId));
         }
       } catch (e) {
-        if ([401,403].includes(e?.response?.status)) setAuthError("Unauthorized. Please log in again.");
+        if ([401, 403].includes(e?.response?.status)) setAuthError("Unauthorized. Please log in again.");
       }
     })();
-    return ()=>{cancelled=true;};
+    return () => {
+      cancelled = true;
+    };
   }, [customerId]);
 
   useEffect(() => {
     if (customerId == null || socketInitRef.current) return;
     socketInitRef.current = true;
     const token = localStorage.getItem("token") || "";
-    const s = io(SOCKET_URL, { transports:["websocket"], auth:{token} });
+    const s = io(SOCKET_URL, { transports: ["websocket"], auth: { token } });
     socketRef.current = s;
 
-    const rejoinAll = ()=>{ if(!socketRef.current) return; for(const key of joinedRoomsRef.current){ const [u1,u2]=key.split(":").map(Number); if(!Number.isFinite(u1)||!Number.isFinite(u2)) continue; socketRef.current.emit("joinChat",{room:key,user1:u1,user2:u2}); } };
-    s.on("connect", rejoinAll); s.on("reconnect", rejoinAll);
-    s.on("connect_error",(err)=>{if(String(err?.message||"").toLowerCase().includes("invalid")) setAuthError("Socket auth failed. Please log in again.");});
-    s.on("reconnect_error",()=>{});
+    const rejoinAll = () => {
+      if (!socketRef.current) return;
+      for (const key of joinedRoomsRef.current) {
+        const [u1, u2] = key.split(":").map(Number);
+        if (!Number.isFinite(u1) || !Number.isFinite(u2)) continue;
+        socketRef.current.emit("joinChat", { room: key, user1: u1, user2: u2 });
+      }
+    };
+    s.on("connect", rejoinAll);
+    s.on("reconnect", rejoinAll);
+    s.on("connect_error", (err) => {
+      if (String(err?.message || "").toLowerCase().includes("invalid")) setAuthError("Socket auth failed. Please log in again.");
+    });
+    s.on("reconnect_error", () => {});
 
-    const onReceive = (msgRaw)=>{
-      const msg = {...msgRaw,message:safeText(msgRaw?.message)};
+    const onReceive = (msgRaw) => {
+      const msg = { ...msgRaw, message: safeText(msgRaw?.message) };
       const senderId = Number(msg.sender_id ?? msg.senderId);
       const receiverId = Number(msg.receiver_id ?? msg.receiverId);
-      if (!Number.isFinite(senderId)||!Number.isFinite(receiverId)) return;
-      if (![senderId,receiverId].includes(Number(customerId))) return;
-      const vId = senderId===Number(customerId)?receiverId:senderId;
+      if (!Number.isFinite(senderId) || !Number.isFinite(receiverId)) return;
+      if (![senderId, receiverId].includes(Number(customerId))) return;
+      const vId = senderId === Number(customerId) ? receiverId : senderId;
 
-      if(Number(activeVendorIdRef.current)!==Number(vId)){
-        setConversations((prevC)=>{
-          const i = prevC.findIndex(c=>Number(c.vendorId)===Number(vId));
-          const isIncomingFromVendor = senderId===Number(vId)&&receiverId===Number(customerId);
-          const unreadInc = isIncomingFromVendor?1:0;
-          if(i===-1) return upsertConversation(prevC,{vendorId:Number(vId),vendorName:`Vendor #${Number(vId)}`,lastMessage:msg.message,unread:unreadInc,updatedAt:toUtcISO(msg.createdAt)||new Date().toISOString()});
+      if (Number(activeVendorIdRef.current) !== Number(vId)) {
+        setConversations((prevC) => {
+          const i = prevC.findIndex((c) => Number(c.vendorId) === Number(vId));
+          const isIncomingFromVendor = senderId === Number(vId) && receiverId === Number(customerId);
+          const unreadInc = isIncomingFromVendor ? 1 : 0;
+          if (i === -1)
+            return upsertConversation(prevC, {
+              vendorId: Number(vId),
+              vendorName: `Vendor #${Number(vId)}`,
+              lastMessage: msg.message,
+              unread: unreadInc,
+              updatedAt: toUtcISO(msg.createdAt) || new Date().toISOString(),
+            });
           const existing = prevC[i];
-          return upsertConversation(prevC,{...existing,lastMessage:msg.message,unread:Number(existing.unread||0)+unreadInc,updatedAt:toUtcISO(msg.createdAt)||new Date().toISOString()});
+          return upsertConversation(prevC, {
+            ...existing,
+            lastMessage: msg.message,
+            unread: Number(existing.unread || 0) + unreadInc,
+            updatedAt: toUtcISO(msg.createdAt) || new Date().toISOString(),
+          });
         });
         return;
       }
 
-      setChat((prev)=>{
-        const exists = prev.some(m=>(msg.clientId&&m.clientId===msg.clientId)||(msg.id&&m.id===msg.id));
-        if(exists) return prev;
-        return [...prev,{id:msg.id??Date.now(),clientId:msg.clientId??null,sender:senderId===Number(customerId)?"customer":"vendor",message:msg.message,createdAt:toUtcISO(msg.createdAt)||new Date().toISOString(),customerId:Number(customerId),vendorId:Number(vId)}];
+      setChat((prev) => {
+        const exists = prev.some(
+          (m) => (msg.clientId && m.clientId === msg.clientId) || (msg.id && m.id === msg.id)
+        );
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            id: msg.id ?? Date.now(),
+            clientId: msg.clientId ?? null,
+            sender: senderId === Number(customerId) ? "customer" : "vendor",
+            message: msg.message,
+            createdAt: toUtcISO(msg.createdAt) || new Date().toISOString(),
+            customerId: Number(customerId),
+            vendorId: Number(vId),
+          },
+        ];
       });
 
-      setConversations((prevC)=>prevC.map(c=>Number(c.vendorId)===Number(vId)?{...c,lastMessage:msg.message,updatedAt:toUtcISO(msg.createdAt)||new Date().toISOString()}:c));
+      setConversations((prevC) =>
+        prevC.map((c) =>
+          Number(c.vendorId) === Number(vId)
+            ? { ...c, lastMessage: msg.message, updatedAt: toUtcISO(msg.createdAt) || new Date().toISOString() }
+            : c
+        )
+      );
     };
 
-    s.off("receiveChat",onReceive);
-    s.on("receiveChat",onReceive);
-    const onVisible = ()=>{if(document.visibilityState==="visible") rejoinAll();};
-    document.addEventListener("visibilitychange",onVisible);
+    s.off("receiveChat", onReceive);
+    s.on("receiveChat", onReceive);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") rejoinAll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
-    return ()=>{
-      if(socketRef.current) for(const key of joinedRoomsRef.current) socketRef.current.emit("leaveChat",{room:key});
+    return () => {
+      if (socketRef.current)
+        for (const key of joinedRoomsRef.current) socketRef.current.emit("leaveChat", { room: key });
       joinedRoomsRef.current.clear();
-      document.removeEventListener("visibilitychange",onVisible);
-      s.off("receiveChat",onReceive); s.off("connect"); s.off("reconnect"); s.off("connect_error"); s.off("reconnect_error"); s.disconnect();
-      socketRef.current=null; socketInitRef.current=false;
+      document.removeEventListener("visibilitychange", onVisible);
+      s.off("receiveChat", onReceive);
+      s.off("connect");
+      s.off("reconnect");
+      s.off("connect_error");
+      s.off("reconnect_error");
+      s.disconnect();
+      socketRef.current = null;
+      socketInitRef.current = false;
     };
   }, [customerId]);
 
-  const joinRoom = (vendorId)=>{if(!socketRef.current||vendorId==null||customerId==null)return; const key=roomKeyOf(customerId,vendorId); if(joinedRoomsRef.current.has(key)) return; socketRef.current.emit("joinChat",{room:key,user1:Number(customerId),user2:Number(vendorId)}); joinedRoomsRef.current.add(key);};
+  const joinRoom = (vendorId) => {
+    if (!socketRef.current || vendorId == null || customerId == null) return;
+    const key = roomKeyOf(customerId, vendorId);
+    if (joinedRoomsRef.current.has(key)) return;
+    socketRef.current.emit("joinChat", { room: key, user1: Number(customerId), user2: Number(vendorId) });
+    joinedRoomsRef.current.add(key);
+  };
 
-  const loadMessages = async (vendorId)=>{if(customerId==null||vendorId==null)return; try{const data=await chatApi.getMessages(Number(customerId),vendorId); const rows=Array.isArray(data?.messages)?data.messages:[]; const normalized = rows.map(m=>({id:m.id,clientId:m.client_id||null,message:safeText(m.message),sender:Number(m.sender_id)===vendorId?"vendor":"customer",createdAt:toUtcISO(m.created_at??m.createdAt),customerId:Number(customerId),vendorId})); setChat(normalized); joinRoom(vendorId); try{await chatApi.markRead({vendorId,customerId:Number(customerId)});}catch{} }catch{} };
+  const loadMessages = async (vendorId) => {
+    if (customerId == null || vendorId == null) return;
+    try {
+      const data = await chatApi.getMessages(Number(customerId), vendorId);
+      const rows = Array.isArray(data?.messages) ? data.messages : [];
+      const normalized = rows.map((m) => ({
+        id: m.id,
+        clientId: m.client_id || null,
+        message: safeText(m.message),
+        sender: Number(m.sender_id) === vendorId ? "vendor" : "customer",
+        createdAt: toUtcISO(m.created_at ?? m.createdAt),
+        customerId: Number(customerId),
+        vendorId,
+      }));
+      setChat(normalized);
+      joinRoom(vendorId);
+      try {
+        await chatApi.markRead({ vendorId, customerId: Number(customerId) });
+      } catch {}
+    } catch {}
+  };
 
-  const handleSelectConversation=(v)=>{const vid=Number(v.vendorId); setActiveVendorId(Number.isFinite(vid)?vid:null); setActiveVendorName(safeText(v.vendorName)||(Number.isFinite(vid)?`Vendor #${vid}`:"")); loadMessages(vid); setConversations(prev=>prev.map(c=>Number(c.vendorId)===vid?{...c,unread:0}:c));};
-  const closeChat=()=>{setActiveVendorId(null); setActiveVendorName(""); setChat([]);};
-  const sendMessage=async()=>{if(!message.trim()||activeVendorId==null||customerId==null)return; const msgText=message.trim(); const clientId=typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():String(Date.now()); const optimistic={id:Date.now(),clientId,sender:"customer",message:safeText(msgText),createdAt:toUtcISO(new Date()),customerId:Number(customerId),vendorId:Number(activeVendorId)}; setChat(prev=>[...prev,optimistic]); setMessage(""); setConversations(prev=>prev.map(c=>Number(c.vendorId)===Number(activeVendorId)?{...c,lastMessage:safeText(msgText),updatedAt:toUtcISO(new Date())}:c)); try{await chatApi.sendMessage({sender_id:Number(customerId),receiver_id:Number(activeVendorId),message:msgText,client_id:clientId});}catch{};};
+  const handleSelectConversation = (v) => {
+    const vid = Number(v.vendorId);
+    setActiveVendorId(Number.isFinite(vid) ? vid : null);
+    setActiveVendorName(safeText(v.vendorName) || (Number.isFinite(vid) ? `Vendor #${vid}` : ""));
+    loadMessages(vid);
+    setConversations((prev) => prev.map((c) => (Number(c.vendorId) === vid ? { ...c, unread: 0 } : c)));
+  };
+  const closeChat = () => {
+    setActiveVendorId(null);
+    setActiveVendorName("");
+    setChat([]);
+  };
+  const sendMessage = async () => {
+    if (!message.trim() || activeVendorId == null || customerId == null) return;
+    const msgText = message.trim();
+    const clientId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    const optimistic = {
+      id: Date.now(),
+      clientId,
+      sender: "customer",
+      message: safeText(msgText),
+      createdAt: toUtcISO(new Date()),
+      customerId: Number(customerId),
+      vendorId: Number(activeVendorId),
+    };
+    setChat((prev) => [...prev, optimistic]);
+    setMessage("");
+    setConversations((prev) =>
+      prev.map((c) =>
+        Number(c.vendorId) === Number(activeVendorId)
+          ? { ...c, lastMessage: safeText(msgText), updatedAt: toUtcISO(new Date()) }
+          : c
+      )
+    );
+    try {
+      await chatApi.sendMessage({
+        sender_id: Number(customerId),
+        receiver_id: Number(activeVendorId),
+        message: msgText,
+        client_id: clientId,
+      });
+    } catch {}
+  };
 
-  useEffect(()=>{messagesEndRef.current?.scrollIntoView({behavior:"smooth"});},[chat]);
-  const headerTitle = useMemo(()=>activeVendorName|| (activeVendorId!=null?`Vendor #${activeVendorId}`:"Select a conversation"), [activeVendorName,activeVendorId]);
-  const filteredConversations = useMemo(()=>{if(!searchTerm.trim()) return conversations; const term = searchTerm.trim().toLowerCase(); return conversations.filter(c=>c.vendorName.toLowerCase().includes(term));}, [searchTerm,conversations]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chat]);
 
-  // Group messages by day for date separators
-  const groupedMessages = useMemo(()=>{
+  const headerTitle = useMemo(
+    () => activeVendorName || (activeVendorId != null ? `Vendor #${activeVendorId}` : "Select a conversation"),
+    [activeVendorName, activeVendorId]
+  );
+
+  const filteredConversations = useMemo(() => {
+    if (!searchTerm.trim()) return conversations;
+    const term = searchTerm.trim().toLowerCase();
+    return conversations.filter((c) => c.vendorName.toLowerCase().includes(term));
+  }, [searchTerm, conversations]);
+
+  const groupedMessages = useMemo(() => {
     const groups = [];
     let lastDate = null;
-    chat.forEach(msg=>{
+    chat.forEach((msg) => {
       const msgDate = formatDate(msg.createdAt);
-      if(msgDate !== lastDate){
-        groups.push({type:'date', date:msgDate, id:msgDate});
+      if (msgDate !== lastDate) {
+        groups.push({ type: "date", date: msgDate, id: msgDate });
         lastDate = msgDate;
       }
-      groups.push({...msg, type:'message'});
+      groups.push({ ...msg, type: "message" });
     });
     return groups;
   }, [chat]);
 
-  if(customerId==null) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]"><p className="text-[var(--text)]">Loading your session…</p></div>;
+  if (customerId == null)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+        <p className="text-[var(--text)]">Loading your session…</p>
+      </div>
+    );
 
   return (
     <div className="flex flex-col bg-[var(--bg)]" style={{ height: "calc(100vh - 243px)" }}>
+      {/* Scrollbar Styles */}
+      <style>
+        {`
+        /* في أعلى ملف Component أو في ملف CSS مستورد */
+.messages-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--bg) var(--bg);
+}
+
+.messages-scroll::-webkit-scrollbar {
+  width: 8px; /* Chrome, Edge, Safari */
+}
+
+.messages-scroll::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+.messages-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--bg);
+  border-radius: 4px;
+  border: 2px solid var(--bg);
+}
+
+        `}
+      </style>
 
       <div className="flex-1 flex max-w-7xl mx-auto w-full min-h-0 gap-2">
         <div className="flex w-full h-full bg-[var(--bg)] min-h-0">
-          
           {/* Sidebar */}
-          <aside className={`w-80 flex flex-col min-h-0 border-r-3 ${
-            themeMode === 'dark' ? 'border-[var(--mid-dark)]' : 'border-[var(--textbox)]'
-          }`}>
+          <aside
+            className={`w-80 flex flex-col min-h-0 border-r-3 ${
+              themeMode === "dark" ? "border-[var(--mid-dark)]" : "border-[var(--textbox)]"
+            }`}
+          >
             <div className="p-4 flex-shrink-0">
-              <input 
-                type="text" 
-                value={searchTerm} 
-                onChange={e=>setSearchTerm(e.target.value)} 
-                placeholder="Search Contact..." 
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search Contact..."
                 className={`w-full px-4 py-2 rounded-full text-sm ${
-                  themeMode === 'dark' 
-                    ? 'bg-[var(--div)] text-[var(--text)]' 
-                    : 'bg-[var(--textbox)] text-[var(--text)]'
+                  themeMode === "dark"
+                    ? "bg-[var(--div)] text-[var(--text)]"
+                    : "bg-[var(--textbox)] text-[var(--text)]"
                 } placeholder-gray-400 focus:outline-none`}
               />
             </div>
-            <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-4">
-              {filteredConversations.map(v=>(
-              <div 
-                key={v.vendorId} 
-                onClick={()=>handleSelectConversation(v)} 
-                className={`cursor-pointer mb-2 rounded-xl p-3 transition-all ${
-                  Number(activeVendorId)===Number(v.vendorId)
-                    ? themeMode === 'dark' 
-                      ? "bg-[var(--light-gray)] border-l-4 border-[var(--button)]" 
-                      : "bg-gray-100 border-l-4 border-[var(--button)]"
-                    :Number(v.unread)>0
-                    ? themeMode === 'dark' ? "bg-[var(--div)]" : "bg-[var(--textbox)]"
-                    : themeMode === 'dark' ? "bg-[var(--div)] hover:bg-[var(--hover)]" : "bg-[var(--textbox)] hover:bg-[var(--div)]"
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex flex-col">
-                    <p className="font-semibold truncate text-[var(--text)] mb-1">{v.vendorName}</p>
-                    <p className="text-sm truncate text-[var(--text)]">{v.lastMessage||"No messages yet"}</p>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-xs text-[var(--text)] mb-1">
-                      {formatMessageTime(v.updatedAt)}
-                    </span>
-                    {Number(v.unread) > 0 && (
-                      <span className="bg-[var(--button)] text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center">
-                        {v.unread}
-                      </span>
-                    )}
+            <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-4 messages-scroll">
+              {filteredConversations.map((v) => (
+                <div
+                  key={v.vendorId}
+                  onClick={() => handleSelectConversation(v)}
+                  className={`cursor-pointer mb-2 rounded-xl p-3 transition-all ${
+                    Number(activeVendorId) === Number(v.vendorId)
+                      ? themeMode === "dark"
+                        ? "bg-[var(--light-gray)] border-l-4 border-[var(--button)]"
+                        : "bg-gray-100 border-l-4 border-[var(--button)]"
+                      : Number(v.unread) > 0
+                      ? themeMode === "dark"
+                        ? "bg-[var(--div)]"
+                        : "bg-[var(--textbox)]"
+                      : themeMode === "dark"
+                      ? "bg-[var(--div)] hover:bg-[var(--hover)]"
+                      : "bg-[var(--textbox)] hover:bg-[var(--div)]"
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col">
+                      <p className="font-semibold truncate text-[var(--text)] mb-1">{v.vendorName}</p>
+                      <p className="text-sm truncate text-[var(--text)]">{v.lastMessage || "No messages yet"}</p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs text-[var(--text)] mb-1">{formatMessageTime(v.updatedAt)}</span>
+                      {Number(v.unread) > 0 && (
+                        <span className="bg-[var(--button)] text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center">
+                          {v.unread}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           </aside>
 
           {/* Chat Area */}
-          <main className={`flex-1 flex flex-col min-h-0  ${
-            themeMode === 'dark' ? 'border-[var(--div)]' : 'border-[var(--div)]'
-          } rounded-lg`}>
+          <main
+            className={`flex-1 flex flex-col min-h-0 ${
+              themeMode === "dark" ? "border-[var(--div)]" : "border-[var(--textbox)]"
+            } rounded-lg`}
+          >
             {activeVendorId ? (
               <>
                 {/* Header */}
-                <div className={`flex items-center justify-between px-6 py-4 flex-shrink-0 border-b-2  ${
-                  themeMode === 'dark' ? 'border-[var(--div)]' : 'border-[var(--div)]'
-                }`}>
+                <div
+                  className={`flex items-center justify-between px-6 py-4 flex-shrink-0 border-b-2 ${
+                    themeMode === "dark" ? "border-[var(--div)]" : "border-[var(--textbox)]"
+                  }`}
+                >
                   <h2 className="font-bold text-[var(--text)] text-lg mt-2">{headerTitle}</h2>
-                  <button onClick={closeChat} className="text-gray-400 hover:text-[var(--button)] text-2xl">×</button>
+                  <button onClick={closeChat} className="text-gray-400 hover:text-[var(--button)] text-2xl">
+                    ×
+                  </button>
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-3">
-                  {groupedMessages.map(msg => msg.type==='date' ? (
-                    <div key={msg.id} className="text-center text-xs text-gray-400 my-2">
-                      {msg.date}
-                    </div>
-                  ) : (
-                    <div key={msg.clientId||msg.id} className={`flex ${msg.sender==="customer"?"justify-end":"justify-start"}`}>
-                      <div className="max-w-[70%]">
-                        <div className={`p-3 rounded-lg text-sm ${
-                          msg.sender==="customer"
-                            ?"bg-[var(--button)] text-white"
-                            :`${
-                                themeMode === 'dark' 
-                                  ? "bg-[var(--div)] border-[var(--button)]" 
-                                  : "bg-[var(--textbox)] border-[var(--button)]"
-                              } text-[var(--text)]`
-                        }`}>
-                          {msg.message}
-                        </div>
-                        <div className={`text-xs mt-1 ${
-                          msg.sender==="customer"
-                            ?"text-right text-[var(--text)]"
-                            :"text-left text-[var(--text)]"
-                        }`}>
-                          {formatMessageTime(msg.createdAt)}
+                <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-3 messages-scroll">
+                  {groupedMessages.map((msg) =>
+                    msg.type === "date" ? (
+                      <div key={msg.id} className="text-center text-xs text-gray-400 my-2">
+                        {msg.date}
+                      </div>
+                    ) : (
+                      <div key={msg.clientId || msg.id} className={`flex ${msg.sender === "customer" ? "justify-end" : "justify-start"}`}>
+                        <div className="max-w-[70%]">
+                          <div
+                            className={`p-3 rounded-lg text-sm ${
+                              msg.sender === "customer"
+                                ? "bg-[var(--button)] text-white"
+                                : `${
+                                    themeMode === "dark" ? "bg-[var(--div)] border-[var(--button)]" : "bg-[var(--textbox)] border-[var(--button)]"
+                                  } text-[var(--text)]`
+                            }`}
+                          >
+                            {msg.message}
+                          </div>
+                          <div
+                            className={`text-xs mt-1 ${
+                              msg.sender === "customer" ? "text-right text-[var(--text)]" : "text-left text-[var(--text)]"
+                            }`}
+                          >
+                            {formatMessageTime(msg.createdAt)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef}/>
+                    )
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input */}
-                <div className={`px-6 py-4 flex items-center gap-3 flex-shrink-0 border-t-2 ${
-                  themeMode === 'dark' ? 'border-[var(--div)]' : 'border-[var(--div)]'
-                }`}>
-                  <input 
-                    type="text" 
-                    value={message} 
-                    onChange={e=>setMessage(e.target.value)} 
-                    onKeyDown={e=>e.key==="Enter"&&sendMessage()} 
-                    placeholder="Type a message here..." 
+                <div
+                  className={`px-6 py-4 flex items-center gap-3 flex-shrink-0 border-t-2 ${
+                    themeMode === "dark" ? "border-[var(--div)]" : "border-[var(--textbox)]"
+                  }`}
+                >
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    placeholder="Type a message here..."
                     className={`flex-1 px-4 py-2 rounded-full  border-2 ${
-                      themeMode === 'dark' ? 'bg-[var(--bg)] border-[var(--div)] text-[var(--text)]' : 'bg-white text-[var(--text)] border-[var(--textbox)]'
+                      themeMode === "dark" ? "bg-[var(--bg)] border-[var(--div)] text-[var(--text)]" : "bg-white text-[var(--text)] border-[var(--textbox)]"
                     } placeholder-gray-500 focus:outline-none`}
                   />
-                  <button 
-                    onClick={sendMessage} 
-                    disabled={!message.trim()} 
+                  <button
+                    onClick={sendMessage}
+                    disabled={!message.trim()}
                     className={`p-3 rounded-full ${
                       message.trim()
-                        ?"bg-[var(--button)] text-white hover:scale-105 transition-transform"
-                        :"bg-gray-400 cursor-not-allowed text-white"
+                        ? "bg-[var(--button)] text-white hover:scale-105 transition-transform"
+                        : "bg-gray-400 cursor-not-allowed text-white"
                     }`}
                   >
                     ➤
@@ -338,7 +523,6 @@ const CustomerChatPage = () => {
               </div>
             )}
           </main>
-
         </div>
       </div>
     </div>

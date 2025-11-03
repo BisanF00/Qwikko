@@ -239,19 +239,19 @@ return (
     {/* Sidebar */}
     <div
       ref={sidebarRef}
-      className={`fixed top-0 left-0 h-full w-64 bg-[var(--bg)] shadow-xl transform transition-transform duration-300 z-50 flex flex-col 
+      className={`fixed top-0 left-0 h-full w-64 bg-[var(--bg)] shadow-xl transform transition-transform duration-300 z-50 flex flex-col
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
     >
-      <div className="px-6 py-6 flex items-center border-b border-[var(--border)]">
+      <div className="px-6 py-4 flex items-center  border-b border-[var(--border)]  ">
         <img 
           src={themeMode === "dark" ? "/LogoDark.png" : "/logo.png"} 
           alt="Qwikko Logo" 
-          className="h-9" 
+          className="h-9 mt-3" 
         />
       </div>
 
       {/* Sidebar Navigation */}
-      <nav className="flex-1 flex flex-col mt-4 space-y-1">
+      <nav className="flex-1 flex flex-col mt-4 space-y-1 ">
         {/* Always visible */}
         <Link
           to="/customer/home"
