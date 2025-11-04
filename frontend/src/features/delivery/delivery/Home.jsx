@@ -40,22 +40,17 @@ export default function DeliveryDashboard() {
     })();
   }, [days]);
 
-  if (loading) {
-    return (
-      <div
-        className="flex items-center justify-center min-h-[60vh]"
-        style={{ backgroundColor: "var(--bg)" }}
-      >
-        <div
-          className="w-12 h-12 border-4 rounded-full animate-spin"
-          style={{
-            borderColor: "var(--primary)",
-            borderTopColor: "transparent",
-          }}
-        />
+if (loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--button)] mx-auto mb-4"></div>
+        <p className="text-[var(--text)] text-lg">Loading Dashboard...</p>
       </div>
-    );
-  }
+    </div>
+  );
+}
+ 
   if (error)
     return (
       <p className="text-center mt-10" style={{ color: "var(--error)" }}>
@@ -93,6 +88,15 @@ export default function DeliveryDashboard() {
     });
   };
 
+  // ألوان الدروب داون بحسب المود
+  const dd = {
+    bg: isDarkMode ? "#111315" : "#ffffff",
+    text: isDarkMode ? "#f9fafb" : "#1f2937",
+    border: isDarkMode ? "#2a2e33" : "#e5e7eb",
+    hover: isDarkMode ? "#1a1d21" : "#f9fafb",
+    ring: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
+  };
+
   return (
     <div
       className="w-full min-h-screen"
@@ -102,64 +106,60 @@ export default function DeliveryDashboard() {
       <div
         className="max-w-7xl mx-auto p-6 md:p-8 rounded-2xl"
         style={{
-          backgroundColor: "var(--div)",
+          backgroundColor: "var(--bg)",
           color: "var(--text)",
           border: "1px solid var(--border)",
         }}
       >
         {/* ===== Hero ===== */}
         <section className="mb-6">
-          <div className="rounded-2xl p-8">
-            <h1 className="text-4xl md:text-5xl font-extrabold">
-              Welcome to{" "}
-              <span style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}>
-                QWIKKO Delivery
-              </span>
-            </h1>
-            <p className="text-base md:text-lg mt-3 opacity-90">
-              Fast, smart, and organized delivery operations—everything you need
-              in one dashboard.
-            </p>
+          <div className="flex flex-col items-center justify-center text-center h-full">
+            <div className="rounded-2xl p-8">
+              <h1 className="text-4xl md:text-5xl font-extrabold">
+                Welcome to{" "}
+                <span style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}>
+                  QWIKKO Delivery
+                </span>
+              </h1>
+              <p className="text-base md:text-lg mt-3 opacity-90">
+                Fast, smart, and organized delivery operations—everything you
+                need in one dashboard.
+              </p>
+            </div>
           </div>
         </section>
 
         {/* ===== Controls ===== */}
-        <section className="mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="font-semibold">Select period:</label>
-            <select
-              value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
-              className="rounded-lg px-4 py-2"
-              style={{
-                backgroundColor: "var(--textbox)",
-                color: "var(--mid-dark)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <option value={7}>Last 7 days</option>
-              <option value={14}>Last 14 days</option>
-              <option value={30}>Last 30 days</option>
-              <option value={90}>Last 3 months</option>
-              <option value={180}>Last 6 months</option>
-            </select>
-          </div>
-        </section>
-
-        {/* ===== Grid: KPI (Top) + Chart + KPI (Bottom) ===== */}
         <section className="max-w-7xl mx-auto px-6 mb-10">
-          {/* Grid 3 أعمدة على الشاشات الكبيرة */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* يسار: الرسم البياني (ياخذ عمودين) */}
             <div
               className="lg:col-span-2 rounded-2xl p-5"
               style={{
                 backgroundColor: "var(--bg)",
-                border: "1px solid var(--border)",
+                borderRadius: "0.75",
                 boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
               }}
             >
-              <h2 className="text-xl font-semibold mb-4">Orders Over Time</h2>
+              <div className="flex justify-start mb-4">
+                <select
+                  value={days}
+                  onChange={(e) => setDays(Number(e.target.value))}
+                  className="rounded-lg px-4 py-2"
+                  style={{
+                    backgroundColor: dd.bg,
+                    color: dd.text,
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <option value={7}>Last 7 days</option>
+                  <option value={14}>Last 14 days</option>
+                  <option value={30}>Last 30 days</option>
+                  <option value={90}>Last 3 months</option>
+                  <option value={180}>Last 6 months</option>
+                </select>
+              </div>
+
+              {/* الرسم البياني */}
               <div className="w-full" style={{ height: 360 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={ordersData} barCategoryGap="35%">
@@ -227,116 +227,119 @@ export default function DeliveryDashboard() {
             </div>
           </div>
         </section>
-
-        {/* ===== Payment Status + Order Status + Top Customers + Top Vendors ===== */}
         <section className="space-y-10 mt-10">
-          {/* 🔸 Payment Status */}
-          <div className="rounded-2xl p-6 bg-var(--div) shadow-md">
-            <h2
-              className="text-2xl font-bold mb-5 flex items-center gap-2"
-              style={{ color: "var(--text)" }}
-            >
+          {/* 🔹 Order Status */}
+          <div
+            className="rounded-2xl p-6 shadow-md"
+            style={{
+              backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
+              color: "var(--text)",
+            }}
+          >
+            <h2 className="text-2xl font-bold mb-5 flex items-center gap-2">
+              <FaClock style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }} />{" "}
+              Order Status
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {["accepted", "processing", "out_for_delivery", "delivered"].map(
+                (statusKey) => {
+                  const val = report.statuses?.[statusKey] || 0;
+                  let color = "#6b7280";
+                  const label = statusKey.replace(/_/g, " ");
+
+                  switch (statusKey) {
+                    case "accepted":
+                      color = "#3b82f6"; // blue
+                      break;
+                    case "processing":
+                      color = "#facc15"; // yellow
+                      break;
+                    case "out_for_delivery":
+                      color = "#f97316"; // orange
+                      break;
+                    case "delivered":
+                      color = "#22c55e"; // green
+                      break;
+                  }
+
+                  return (
+                    <div
+                      key={statusKey}
+                      className="p-4 rounded-xl text-center shadow border transition-transform duration-300"
+                      style={{
+                        backgroundColor: "var(--bg)",
+                        borderColor: "var(--border)",
+                      }}
+                    >
+                      <FaClock
+                        style={{ color }}
+                        className="text-2xl mx-auto mb-1.5"
+                      />
+                      <p className="capitalize font-semibold text-sm mb-0.5">
+                        {label}
+                      </p>
+                      <p className="text-base font-bold">{val} orders</p>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </div>
+
+          {/* 🔹 Payment Status */}
+          <div
+            className="rounded-2xl p-6 shadow-md"
+            style={{
+              backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
+              color: "var(--text)",
+            }}
+          >
+            <h2 className="text-2xl font-bold mb-5 flex items-center gap-2">
               <FaDollarSign
                 style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}
               />{" "}
               Payment Status
             </h2>
-            {Object.entries(report.payment_status || {})
-              .filter(([key]) => key !== "failed" && key !== "refunded")
-              .map(([key, val]) => {
-                const total = Object.entries(report.payment_status || {})
-                  .filter(([k]) => k !== "failed" && k !== "refunded")
-                  .reduce((a, [, v]) => a + v, 0);
-                const percent = total ? (val / total) * 100 : 0;
 
-                let bgColor = "bg-gray-400";
-                if (key === "paid") bgColor = "bg-green-500";
-                else if (key === "pending") bgColor = "bg-yellow-400";
-                else if (key === "unpaid") bgColor = "bg-red-500";
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {["paid", "pending", "unpaid"].map((key) => {
+                const val = report.payment_status?.[key] ?? 0;
+                let iconColor = "#22c55e"; // default for paid
+                const label = key.replace(/_/g, " ");
+
+                if (key === "pending") iconColor = "#facc15";
+                if (key === "unpaid") iconColor = "#ef4444";
 
                 return (
-                  <div key={key} className="mb-4">
-                    <p className="capitalize mb-1">{key.replace(/_/g, " ")}</p>
-                    <div className="w-full h-6 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`${bgColor} h-full rounded-full`}
-                        style={{ width: `${percent}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-right text-sm mt-1">{val} orders</p>
+                  <div
+                    key={key}
+                    className="p-5 rounded-xl text-center shadow border"
+                    style={{
+                      backgroundColor: "var(--bg)",
+                      borderColor: "var(--border)",
+                    }}
+                  >
+                    <FaDollarSign
+                      style={{ color: iconColor }}
+                      className="text-3xl mx-auto mb-2"
+                    />
+                    <p className="capitalize font-semibold mb-1">{label}</p>
+                    <p className="text-lg font-bold">{val} orders</p>
                   </div>
                 );
               })}
+            </div>
           </div>
 
-          {/* 🔸 Order Status */}
-          <div className="rounded-2xl p-6 bg-var(--div) shadow-md">
-            <h2
-              className="text-2xl font-bold mb-5 flex items-center gap-2"
-              style={{ color: "var(--text)" }}
-            >
-              <FaClock style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }} />{" "}
-              Order Status
-            </h2>
-
-            {[
-              "accepted",
-              "processing",
-              "out_for_delivery",
-              "delivered",
-              "cancelled",
-            ].map((statusKey) => {
-              const val = report.statuses?.[statusKey] || 0;
-              const total = Object.values(report.statuses || {}).reduce(
-                (a, b) => a + b,
-                0
-              );
-              const percent = total ? (val / total) * 100 : 0;
-
-              let bgColor = "bg-gray-400";
-              switch (statusKey) {
-                case "accepted":
-                  bgColor = "bg-blue-500";
-                  break;
-                case "processing":
-                  bgColor = "bg-yellow-400";
-                  break;
-                case "out_for_delivery":
-                  bgColor = "bg-purple-500";
-                  break;
-                case "delivered":
-                  bgColor = "bg-green-500";
-                  break;
-                case "cancelled":
-                  bgColor = "bg-red-500";
-                  break;
-              }
-
-              return (
-                <div key={statusKey} className="mb-4">
-                  <p className="capitalize mb-1">
-                    {statusKey.replace(/_/g, " ")}
-                  </p>
-                  <div className="w-full h-6 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className={`${bgColor} h-full rounded-full`}
-                      style={{ width: `${percent}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-right text-sm mt-1">{val} orders</p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 🔸 Top Customers */}
+          {/* 🔸 Top Customers (اتركه كما هو عندك) */}
           <div
             className="rounded-2xl p-6 shadow-md"
-            style={{ backgroundColor: "var(--div)" }}
+            style={{ backgroundColor: isDarkMode ? "#313131" : "#f5f6f5" }}
           >
             <h2
               className="text-2xl font-bold mb-5 flex items-center gap-2"
-              style={{ color: "var(--text)" }} // 🌗 يتغير حسب الثيم
+              style={{ color: "var(--text)" }}
             >
               <FaUsers style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }} />{" "}
               Top Customers
@@ -347,31 +350,27 @@ export default function DeliveryDashboard() {
                   key={c.customer_id}
                   className="p-4 rounded-xl text-center"
                   style={{
-                    backgroundColor: "var(--bg)", // يتغير حسب الثيم
+                    backgroundColor: "var(--bg)",
                     border: "1px solid var(--border)",
-                    color: "var(--text)", // النص يتغير حسب الثيم
+                    color: "var(--text)",
                   }}
                 >
                   <p className="font-semibold mb-2">{c.customer_email}</p>
-                  <p style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}>
-                    Orders: {c.orders_count}
-                  </p>
-                  <p style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}>
-                    Total Spent: ${c.total_amount}
-                  </p>
+                  <p>Orders: {c.orders_count}</p>
+                  <p>Total Spent: ${c.total_amount}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 🔸 Top Vendors */}
+          {/* 🔸 Top Vendors (اتركه كما هو عندك) */}
           <div
             className="rounded-2xl p-6 shadow-md"
-            style={{ backgroundColor: "var(--div)" }}
+            style={{ backgroundColor: isDarkMode ? "#313131" : "#f5f6f5" }}
           >
             <h2
               className="text-2xl font-bold mb-5 flex items-center gap-2"
-              style={{ color: "var(--text)" }} // 🌗 يتغير حسب الثيم
+              style={{ color: "var(--text)" }}
             >
               <FaStore style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }} />{" "}
               Top Vendors
@@ -388,12 +387,8 @@ export default function DeliveryDashboard() {
                   }}
                 >
                   <p className="font-semibold mb-1">{v.store_name}</p>
-                  <p style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}>
-                    Orders: {v.orders_count}
-                  </p>
-                  <p style={{ color: isDarkMode ? "#ffffff" : "#292e2c" }}>
-                    Revenue: ${v.revenue}
-                  </p>
+                  <p>Orders: {v.orders_count}</p>
+                  <p>Revenue: ${v.revenue}</p>
                 </div>
               ))}
             </div>

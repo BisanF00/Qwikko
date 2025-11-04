@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
-/* light theme */
+
+ /* Light theme */
 :root {
   --bg: #ffffff;       /* background */
   --textbox: #f5f6f5;  /* textbox */
@@ -10,7 +11,7 @@
   --div: #cdcbcb;      /* div */
   --light-gray: #adadad;
   --mid-dark: #313131;
- 
+
   /* Additional colors */
   --success: #22c55e;  /*  للنجاح */
   --error: #ef4444;    /*  للحذف */
@@ -20,7 +21,7 @@
   --hover:#d0d5d2 ;/*   للهوفر  */
 ;
 }
- 
+
 /* Dark theme */
 .dark {
   --bg: #323232;       /* background */
@@ -30,7 +31,7 @@
   --div: #4f4f4f;      /* dark div */
   --mid-dark: #313131; /* between bg and div */
   --light-gray: #adadad;
- 
+
   /* Additional colors */
   --success: #22c55e;  /*  للنجاح */
   --error: #ef4444;    /*  للحذف */
@@ -38,6 +39,8 @@
   --warning: #facc15;  /*     */
   --border: #575858;/*   للبوردرات  */
   --hover:#4f5452 ;/*   للهوفر  */
+  --orange: #f97316; /*  للـ Out for Delivery */
+
 }
 * {
   transition-property: color, background-color, border-color, transform, box-shadow;

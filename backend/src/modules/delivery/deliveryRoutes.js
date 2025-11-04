@@ -99,8 +99,12 @@ router.put("/coverage/:id", protect,authorizeRole('delivery'), DeliveryControlle
  * @middleware protect - checks JWT token
  * @controller DeliveryController.deleteCoverage
  */
-router.delete("/coverage/:id", protect,authorizeRole('delivery'), DeliveryController.deleteCoverage);
-
+router.delete(
+  "/coverage",
+  protect,
+  authorizeRole("delivery"),
+  DeliveryController.deleteCoverage
+);
 /**
  * @route GET /reports
  * @desc Get weekly report for authenticated delivery company

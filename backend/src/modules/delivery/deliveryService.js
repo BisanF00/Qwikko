@@ -111,28 +111,16 @@ exports.getCoverageAreas = async (userId) => {
  * @returns {Promise<Array<Object>>} List of orders with updated statuses
  */
 
-exports.getCompanyOrders = async (companyId) => {
-  const orders = await DeliveryModel.getOrdersByCompanyId(companyId);
+exports.getCompanyOrders = async (companyId, limit, offset) => {
+  const [orders, total] = await Promise.all([
+    DeliveryModel.getOrdersByCompanyId(companyId, limit, offset),
+    DeliveryModel.getOrdersCountByCompanyId(companyId),
+  ]);
 
-  for (const order of orders) {
-    const orderItems = await DeliveryModel.getOrderItems(order.id);
-
-    const allAccepted = orderItems.every(
-      (item) => item.vendor_status === "accepted"
-    );
-
-    // if (allAccepted && order.status !== "accepted") {
-    //   const updatedOrder = await DeliveryModel.updateStatus(
-    //     order.id,
-    //     "accepted"
-    //   );
-    //   order.status = updatedOrder.status; // نحدث القيمة في الذاكرة قبل الإرسال
-    //   order.updated_at = updatedOrder.updated_at;
-    // }
-  }
-
-  return orders;
+  // ما في N+1، كلشي محسوب في SQL
+  return { orders, total };
 };
+
 
 /**
  * Get weekly report via service layer

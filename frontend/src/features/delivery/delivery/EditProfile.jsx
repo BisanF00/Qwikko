@@ -1,26 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   fetchDeliveryProfile,
   updateDeliveryProfile,
   fetchCoverageAreas,
-  addCoverage, // ✅ موجود سابقًا
+  addCoverage,
 } from "./Api/DeliveryAPI";
 import { useSelector } from "react-redux";
-// 👇 فوق كل شيء
+
+// ===================== API محلي: حذف مدينة واحدة =====================
 const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE?.replace(/\/+$/,"")) ||
+  (typeof import.meta !== "undefined" &&
+    import.meta.env?.VITE_API_BASE?.replace(/\/+$/, "")) ||
   "http://localhost:3000/api/delivery";
 
-/* ===================== API محلي: حذف مدينة واحدة ===================== */
 async function deleteCoverageCity(token, city) {
-  const url = `${API_BASE}/coverage/${encodeURIComponent(city)}`;
+  const url = `${API_BASE}/coverage`;
   const res = await fetch(url, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ areas: [city] }),
   });
 
-  // لو السيرفر رجّع HTML لأن الطلب راح للواجهة بالغلط، هذا يحميك من JSON.parse error
   let data;
   try {
     data = await res.json();
@@ -29,19 +33,19 @@ async function deleteCoverageCity(token, city) {
   }
 
   if (!res.ok) {
-    const msg = data?.message || data?.error || `Failed to delete city: ${city}`;
+    const msg =
+      data?.message || data?.error || `Failed to delete city: ${city}`;
     throw new Error(msg);
   }
-  return data; // { message, deleted, remaining? }
+  return data;
 }
 
-
+// ===================== Component =====================
 export default function EditProfile() {
   const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const [originalData, setOriginalData] = useState({});
-  const [deletingCity, setDeletingCity] = useState(null); // 🔸 المدينة قيد الحذف الآن
+  const [deletingCity, setDeletingCity] = useState(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,13 +65,37 @@ export default function EditProfile() {
     "Aqaba",
   ];
 
-  // 🔹 إزالة التكرارات
   const uniq = (arr) => Array.from(new Set(arr || []));
 
+  // =============== Toast System ===============
+  const [toast, setToast] = useState({
+    show: false,
+    type: "success",
+    text: "",
+  });
+  const toastTimerRef = useRef(null);
+
+  const showToast = (type, text) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ show: true, type, text });
+    toastTimerRef.current = setTimeout(() => {
+      setToast((t) => ({ ...t, show: false }));
+    }, 3000);
+    // نضمن يكون ظاهر فورًا على أعلى الصفحة
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+  // ============================================
+
+  // ===================== تحميل البيانات =====================
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        // 1) جاي من صفحة البروفايل؟
         const fromStateCompany = location.state?.company;
         const fromStateCoverage = location.state?.coverageAreas;
 
@@ -83,7 +111,6 @@ export default function EditProfile() {
           return;
         }
 
-        // 2) فتح مباشر → fetch من الـ API
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Unauthorized");
 
@@ -92,7 +119,7 @@ export default function EditProfile() {
 
         let coverageAreas = location.state?.coverageAreas;
         if (!Array.isArray(coverageAreas) || coverageAreas.length === 0) {
-          coverageAreas = await fetchCoverageAreas(token); // لازم ترجع strings
+          coverageAreas = await fetchCoverageAreas(token);
         }
 
         const initData = {
@@ -105,18 +132,18 @@ export default function EditProfile() {
         setFormData(initData);
         setOriginalData(initData);
       } catch (err) {
-        setMessage("❌ " + (err.message || "Failed to load"));
+        showToast("error", err.message || "Failed to load profile");
       }
     };
 
     loadProfile();
   }, [location.state?.company, location.state?.coverageAreas]);
 
+  // ===================== تغييرات الحقول =====================
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // مقارنة التغييرات
   const getChangedFields = () => {
     const changed = {};
     if (!formData) return changed;
@@ -136,29 +163,20 @@ export default function EditProfile() {
     return changed;
   };
 
-  /* ===================== حذف مدينة بزر (×) — تفاؤلي ===================== */
+  // ===================== حذف مدينة =====================
   const handleDeleteCity = async (city) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Unauthorized");
-      setMessage("");
       setDeletingCity(city);
 
-      // حذف تفاؤلي محليًا
+      // حذف تفاؤلي
       const prev = formData.coverage_areas;
       const next = prev.filter((a) => a !== city);
       setFormData((p) => ({ ...p, coverage_areas: next }));
 
-      // نداء السيرفر
-      const resp = await deleteCoverageCity(token, city);
-
-      // (اختياري) لو بدك تعتمدي على remaining من السيرفر:
-      // if (Array.isArray(resp?.remaining)) {
-      //   const remainingNames = resp.remaining.map((r) => r.city);
-      //   setFormData((p) => ({ ...p, coverage_areas: uniq(remainingNames) }));
-      // }
-
-      setMessage(`✅ Deleted ${city} successfully`);
+      await deleteCoverageCity(token, city);
+      showToast("success", `Deleted ${city} successfully`);
     } catch (err) {
       // رجوع في حال الفشل
       setFormData((p) => {
@@ -166,52 +184,55 @@ export default function EditProfile() {
         set.add(city);
         return { ...p, coverage_areas: Array.from(set) };
       });
-      setMessage("❌ " + (err.message || "Delete failed"));
+      showToast("error", err.message || "Delete failed");
     } finally {
       setDeletingCity(null);
     }
   };
 
+  // ===================== حفظ التغييرات =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage("");
+
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Unauthorized");
 
       const allChanges = getChangedFields();
       const { coverage_areas, ...profileChanges } = allChanges;
-
       const tasks = [];
 
-      // تغطيات جديدة (إضافة فقط) — الحذف صار فوري بزر ×
       if (Array.isArray(coverage_areas)) {
         tasks.push(addCoverage(token, uniq(coverage_areas)));
       }
 
-      // تغييرات أخرى في البروفايل
       if (Object.keys(profileChanges).length > 0) {
         tasks.push(updateDeliveryProfile(token, profileChanges));
       }
 
       if (tasks.length === 0) {
-        setMessage("ℹ️ No changes detected.");
+        showToast("info", "No changes detected.");
         setLoading(false);
         return;
       }
 
       await Promise.all(tasks);
 
-      setMessage("✅ Profile updated successfully!");
-      navigate("/delivery/dashboard/getprofile");
+      // ✅ Toast بدل أي message
+      showToast("success", "Profile updated successfully!");
+      // انتقال بعد لحظة صغيرة
+      setTimeout(() => {
+        navigate("/delivery/dashboard/getprofile");
+      }, 1200);
     } catch (err) {
-      setMessage("❌ " + (err.message || "Update failed"));
+      showToast("error", err.message || "Failed to update profile");
     } finally {
       setLoading(false);
     }
   };
 
+  // ===================== واجهة الانتظار =====================
   if (!formData) {
     return (
       <div
@@ -219,261 +240,277 @@ export default function EditProfile() {
         style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
       >
         <div
-          className="w-16 h-16 border-4 rounded-full"
+          className="w-16 h-16 border-4 border-solid rounded-full animate-spin"
           style={{
             borderColor: "var(--primary)",
             borderTopColor: "transparent",
           }}
-          title="Loading"
         />
       </div>
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--button)] mx-auto mb-4"></div>
+          <p className="text-[var(--text)] text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={isDarkMode ? "dark" : ""}
-      style={{ background: "var(--bg)" }}
-    >
-      {/* العنوان أعلى يسار */}
+    <>
+      {/* ✅ Toast (Top Center) */}
+      {toast.show && (
+        <div
+          className={`fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg text-white font-semibold text-center z-[9999] transition-all duration-500 ${
+            toast.show ? "opacity-100" : "opacity-0 -translate-y-4"
+          }`}
+          style={{
+            minWidth: "280px",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+            backgroundColor:
+              toast.type === "success"
+                ? "var(--success)"
+                : toast.type === "error"
+                ? "var(--error)"
+                : "var(--warning)",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          {toast.type === "success"
+            ? "✅ "
+            : toast.type === "error"
+            ? "❌ "
+            : "ℹ️ "}
+          {toast.text}
+        </div>
+      )}
+
+      {/* العنوان */}
       <div className="max-w-5xl mx-auto px-6 pt-8">
         <h2
-          className="text-3xl font-extrabold"
+          className="text-3xl font-extrabold mb-6"
           style={{ color: "var(--text)" }}
         >
-          Edit Delivery Profile
+          Update My Profile
         </h2>
       </div>
 
-      {/* الديف الكبيرة */}
-      <div
-        className="max-w-5xl mx-auto mt-6 p-6 rounded-3xl shadow-2xl"
+      {/* الفورم مباشرة بدون ديف خارجي */}
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto p-6"
         style={{
-          backgroundColor: "var(--div)",
           color: "var(--text)",
+          backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
           border: `1px solid var(--border)`,
+          borderRadius: "1.5rem",
+          boxShadow: "0 6px 15px rgba(0,0,0,0.1)",
         }}
       >
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-8"
-          style={{ color: "var(--text)" }}
+        {/* Personal Info */}
+        <div
+          className="p-6 rounded-2xl "
+          style={{
+            backgroundColor: isDarkMode ? "#313131" : "#ffffff",
+            border: `1px solid var(--border)`,
+          }}
         >
-          {/* Personal Info Card */}
-          <div
-            className="p-6 rounded-2xl shadow-xl"
-            style={{
-              backgroundColor: "var(--bg)",
-              color: "var(--text)",
-              border: `1px solid var(--border)`,
-            }}
-          >
-            <h3
-              className="text-2xl font-bold mb-4"
-              style={{ color: "var(--text)" }}
-            >
-              Personal Info
-            </h3>
+          <h3 className="text-2xl font-bold mb-4">Personal Info</h3>
 
-            <div className="mb-4">
-              <label
-                className="block font-semibold mb-1"
-                style={{ color: "var(--text)" }}
-              >
-                User Name
-              </label>
-              <input
-                type="text"
-                name="user_name"
-                value={formData.user_name}
-                placeholder={originalData.user_name || "User name"}
-                onChange={handleChange}
-                className="w-full p-2 rounded-lg"
-                style={{
-                  backgroundColor: "var(--textbox)",
-                  color: "var(--text)",
-                  border: `1px solid var(--border)`,
-                }}
-              />
-            </div>
-
-            <div>
-              <label
-                className="block font-semibold mb-1"
-                style={{ color: "var(--text)" }}
-              >
-                Phone Number
-              </label>
-              <input
-                type="text"
-                name="user_phone"
-                value={formData.user_phone}
-                placeholder={originalData.user_phone || "Phone number"}
-                onChange={handleChange}
-                className="w-full p-2 rounded-lg"
-                style={{
-                  backgroundColor: "var(--textbox)",
-                  color: "var(--text)",
-                  border: `1px solid var(--border)`,
-                }}
-              />
-            </div>
+          {/* User Name */}
+          <div className="mb-4">
+            <label className="block font-semibold mb-1">User Name</label>
+            <input
+              type="text"
+              name="user_name"
+              value={formData.user_name}
+              placeholder={originalData.user_name || "User name"}
+              onChange={handleChange}
+              className="w-full p-2 rounded-lg focus:outline-none transition-all duration-150"
+              style={{
+                backgroundColor: "transparent",
+                color: isDarkMode ? "#ffffff" : "#000000",
+                border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+                boxShadow: "none",
+              }}
+              onFocus={(e) =>
+                (e.currentTarget.style.boxShadow =
+                  "0 0 0 3px rgba(2,106,75,0.15)")
+              }
+              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+            />
           </div>
 
-          {/* Company Info Card */}
-          <div
-            className="p-6 rounded-2xl shadow-xl"
-            style={{
-              backgroundColor: "var(--bg)",
-              color: "var(--text)",
-              border: `1px solid var(--border)`,
-            }}
-          >
-            <h3
-              className="text-2xl font-bold mb-4"
-              style={{ color: "var(--text)" }}
-            >
-              Company Info
-            </h3>
-
-            <div className="mb-4">
-              <label
-                className="block font-semibold mb-1"
-                style={{ color: "var(--text)" }}
-              >
-                Company Name
-              </label>
-              <input
-                type="text"
-                name="company_name"
-                value={formData.company_name}
-                placeholder={originalData.company_name || "Company name"}
-                onChange={handleChange}
-                className="w-full p-2 rounded-lg"
-                style={{
-                  backgroundColor: "var(--textbox)",
-                  color: "var(--text)",
-                  border: `1px solid var(--border)`,
-                }}
-              />
-            </div>
-
-            {/* Coverage Areas */}
-            <label
-              className="block font-semibold mb-2"
-              style={{ color: "var(--text)" }}
-            >
-              Coverage Areas
-            </label>
-            <select
-              className="w-full p-2 rounded mb-4"
+          {/* Phone Number */}
+          <div>
+            <label className="block font-semibold mb-1">Phone Number</label>
+            <input
+              type="text"
+              name="user_phone"
+              value={formData.user_phone}
+              placeholder={originalData.user_phone || "Phone number"}
+              onChange={handleChange}
+              className="w-full p-2 rounded-lg focus:outline-none transition-all duration-150"
               style={{
-                backgroundColor: "var(--textbox)",
-                color: "var(--text)",
-                border: `1px solid var(--border)`,
+                backgroundColor: "transparent",
+                color: isDarkMode ? "#ffffff" : "#000000",
+                border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+                boxShadow: "none",
               }}
-              onChange={(e) => {
-                const area = e.target.value;
-                if (area && !formData.coverage_areas.includes(area)) {
-                  setFormData((prev) => ({
-                    ...prev,
-                    coverage_areas: uniq([...prev.coverage_areas, area]),
-                  }));
-                }
-                e.target.value = "";
+              onFocus={(e) =>
+                (e.currentTarget.style.boxShadow =
+                  "0 0 0 3px rgba(2,106,75,0.15)")
+              }
+              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+            />
+          </div>
+        </div>
+
+        {/* Company Info */}
+        <div
+          className="p-6 rounded-2xl "
+          style={{
+            backgroundColor: isDarkMode ? "#313131" : "#ffffff",
+            border: `1px solid var(--border)`,
+          }}
+        >
+          <h3 className="text-2xl font-bold mb-4">Company Info</h3>
+
+          {/* Company Name */}
+          <div className="mb-4">
+            <label className="block font-semibold mb-1">Company Name</label>
+            <input
+              type="text"
+              name="company_name"
+              value={formData.company_name}
+              placeholder={originalData.company_name || "Company name"}
+              onChange={handleChange}
+              className="w-full p-2 rounded-lg focus:outline-none transition-all duration-150"
+              style={{
+                backgroundColor: "transparent",
+                color: isDarkMode ? "#ffffff" : "#000000",
+                border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+                boxShadow: "none",
               }}
-              value=""
-            >
-              <option value="" disabled>
-                Select an area
+              onFocus={(e) =>
+                (e.currentTarget.style.boxShadow =
+                  "0 0 0 3px rgba(2,106,75,0.15)")
+              }
+              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+            />
+          </div>
+
+          {/* Coverage Areas */}
+          <label className="block font-semibold mb-2">Coverage Areas</label>
+          <select
+            className="w-full p-2 rounded mb-4 focus:outline-none transition-all duration-150"
+            style={{
+              backgroundColor: "transparent",
+              color: isDarkMode ? "#ffffff" : "#000000",
+              border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+              boxShadow: "none",
+              appearance: "none",
+            }}
+            onFocus={(e) =>
+              (e.currentTarget.style.boxShadow =
+                "0 0 0 3px rgba(2,106,75,0.15)")
+            }
+            onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+            onChange={(e) => {
+              const area = e.target.value;
+              if (area && !formData.coverage_areas.includes(area)) {
+                setFormData((prev) => ({
+                  ...prev,
+                  coverage_areas: Array.from(
+                    new Set([...prev.coverage_areas, area])
+                  ),
+                }));
+              }
+              e.target.value = "";
+            }}
+            value=""
+          >
+            <option value="" disabled>
+              Select an area
+            </option>
+            {ALLOWED_AREAS.filter(
+              (a) => !formData.coverage_areas.includes(a)
+            ).map((area) => (
+              <option key={area} value={area} style={{ color: "#000" }}>
+                {area}
               </option>
-              {ALLOWED_AREAS.filter(
-                (a) => !formData.coverage_areas.includes(a)
-              ).map((area) => (
-                <option key={area} value={area}>
-                  {area}
-                </option>
-              ))}
-            </select>
+            ))}
+          </select>
 
-            <div className="flex flex-wrap gap-2">
-              {formData.coverage_areas.map((area) => (
-                <span
-                  key={area}
-                  className="flex items-center px-3 py-1 rounded-2xl"
+          <div className="flex flex-wrap gap-2">
+            {formData.coverage_areas.map((area) => (
+              <span
+                key={area}
+                className="flex items-center px-3 py-1 rounded-2xl"
+                style={{
+                  color: isDarkMode ? "#ffffff" : "#292e2c",
+                  border: `1px solid var(--border)`,
+                }}
+              >
+                {area}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCity(area)}
+                  disabled={deletingCity === area}
+                  className="ml-2 font-bold"
                   style={{
-                    backgroundColor: "var(--textbox)",
-                    color: "var(--text)",
-                    border: `1px solid var(--border)`,
+                    color: isDarkMode ? "#ffffff" : "#292e2c",
+                    opacity: deletingCity === area ? 0.6 : 1,
+                    cursor: deletingCity === area ? "not-allowed" : "pointer",
                   }}
+                  title={deletingCity === area ? "Deleting..." : "Remove"}
                 >
-                  {area}
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCity(area)}
-                    disabled={deletingCity === area}
-                    className="ml-2 font-bold"
-                    style={{
-                      color: "var(--error)",
-                      opacity: deletingCity === area ? 0.6 : 1,
-                      cursor: deletingCity === area ? "not-allowed" : "pointer",
-                    }}
-                    title={deletingCity === area ? "Deleting..." : "Remove"}
-                  >
-                    {deletingCity === area ? "…" : "×"}
-                  </button>
-                </span>
-              ))}
-            </div>
+                  {deletingCity === area ? "…" : "×"}
+                </button>
+              </span>
+            ))}
           </div>
+        </div>
 
-          {/* Buttons */}
-          <div className="md:col-span-2 flex items-center justify-end gap-3 mt-4">
-            <button
-              type="button"
-              onClick={() => navigate("/delivery/dashboard/getprofile")}
-              className="rounded-lg text-sm font-semibold"
-              style={{
-                padding: "8px 14px",
-                backgroundColor: "var(--hover)",
-                color: "var(--mid-dark)",
-                border: `1px solid var(--border)`,
-              }}
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg text-sm font-semibold"
-              style={{
-                padding: "8px 14px",
-                backgroundColor: "var(--button)",
-                color: "#ffffff",
-                border: `1px solid var(--border)`,
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
-              {loading ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-
-        {message && (
-          <p
-            className="mt-4 text-center font-medium"
+        {/* Buttons */}
+        <div className="md:col-span-2 flex items-center justify-end gap-3 mt-4">
+          <button
+            type="button"
+            onClick={() => navigate("/delivery/dashboard/getprofile")}
+            className="rounded-lg text-sm font-semibold"
             style={{
-              color: message.startsWith("✅")
-                ? "var(--success)"
-                : "var(--text)",
+              padding: "8px 14px",
+              backgroundColor: "var(--bg)",
+              color: isDarkMode ? "#ffffff" : "#292e2c",
+              border: `1px solid var(--border)`,
             }}
           >
-            {message}
-          </p>
-        )}
-      </div>
-    </div>
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-lg text-sm font-semibold"
+            style={{
+              padding: "8px 14px",
+              backgroundColor: "var(--button)",
+              color: "#ffffff",
+              border: `1px solid var(--border)`,
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loading ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
+    </>
   );
 }

@@ -166,7 +166,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user || null;
         state.token = action.payload.token || null; // غالبًا مافيش توكن هنا
-        state.successMessage = "✅ Delivery registered successfully!";
+        state.successMessage = " Delivery registered successfully!";
 
         const userId = extractUserId(action.payload.user, null);
         if (userId) localStorage.setItem("userId", String(userId));
@@ -179,7 +179,7 @@ const authSlice = createSlice({
       })
       .addCase(registerDelivery.rejected, (state, action) => {
         state.loading = false;
-        state.error = "❌ " + action.payload;
+        state.error =  action.payload;
       })
 
       // Login
@@ -192,7 +192,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user; // {id, role, email?}
         state.token = action.payload.token;
-        state.successMessage = "✅ Login successful!";
+        state.successMessage = " Login successful!";
 
         const payload = decodeJwtPayload(action.payload.token);
         const userId = extractUserId(action.payload.user, payload);
@@ -206,7 +206,7 @@ const authSlice = createSlice({
       })
       .addCase(loginDelivery.rejected, (state, action) => {
         state.loading = false;
-        state.error = "❌ " + action.payload;
+        state.error =  action.payload;
       });
   },
 });

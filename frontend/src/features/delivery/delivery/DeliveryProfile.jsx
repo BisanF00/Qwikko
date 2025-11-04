@@ -22,7 +22,7 @@ const ALLOWED_AREAS = [
   "Aqaba",
 ];
 
-// ✅ دالة لتطبيع شكل التغطيات إلى مصفوفة أسماء مدن دومًا
+// ✅ تطبيع التغطيات إلى مصفوفة أسماء مدن
 const normalizeCoverage = (data) =>
   Array.isArray(data)
     ? data
@@ -37,6 +37,7 @@ export default function DeliveryProfile() {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [selectedAreas, setSelectedAreas] = useState([]);
+  const [saving, setSaving] = useState(false); // ✅ إضافة حالة حفظ
   const navigate = useNavigate();
 
   const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
@@ -52,10 +53,7 @@ export default function DeliveryProfile() {
           fetchCoverageAreas(token),
         ]);
 
-        // ملاحظة: profile متوقع فيه .company حسب كودك الحالي
         setCompany(profile.company);
-
-        // ✅ طبّعي التغطيات مهما كان شكل الرد
         setCoverage(normalizeCoverage(coverageData));
       } catch (err) {
         setError(err.message || "Failed to load");
@@ -69,9 +67,12 @@ export default function DeliveryProfile() {
   const handleSaveCoverage = async () => {
     try {
       const token = localStorage.getItem("token");
-      await addCoverage(token, selectedAreas);
+      const uniqueCities = Array.from(new Set(selectedAreas)); // ✅ منع تكرار
+      if (uniqueCities.length === 0) return;
 
-      // ⚠️ مهم: بعد الحفظ رجّعي التطبيع كمان
+      setSaving(true); // ✅ بدء الحفظ
+      await addCoverage(token, uniqueCities); // ترسل أسماء فقط (والباك يكمل)
+
       const updatedCoverage = await fetchCoverageAreas(token);
       setCoverage(normalizeCoverage(updatedCoverage));
 
@@ -79,25 +80,21 @@ export default function DeliveryProfile() {
       setShowModal(false);
     } catch (err) {
       console.error("Failed to add coverage", err);
+    } finally {
+      setSaving(false); // ✅ إنهاء الحفظ
     }
   };
 
-  if (loading)
-    return (
-      <div
-        className="no-anim flex items-center justify-center min-h-screen"
-        style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
-      >
-        <div
-          className="w-16 h-16 border-4 rounded-full"
-          style={{
-            borderColor: "var(--primary)",
-            borderTopColor: "transparent",
-          }}
-          title="Loading"
-        />
+if (loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--button)] mx-auto mb-4"></div>
+        <p className="text-[var(--text)] text-lg">Loading Profile...</p>
       </div>
-    );
+    </div>
+  );
+}
 
   if (error)
     return (
@@ -105,21 +102,19 @@ export default function DeliveryProfile() {
         className="no-anim text-center mt-10"
         style={{ color: "var(--error)" }}
       >
-        ❌ {error}
+         {error}
       </p>
     );
 
-  const title = "Delivery Profile";
+  const title = "My Profile";
 
   return (
     <div className={`${isDarkMode ? "dark" : ""} no-anim`}>
-      {/* الصفحة */}
       <div
         className="min-h-screen pb-12"
         style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
       >
-        {/* العنوان أعلى يسار */}
-        <div className="max-w-6xl mx-auto px-6 pt-8 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 pt-4 flex items-center justify-between">
           <h1
             className="text-3xl md:text-4xl font-extrabold tracking-tight"
             style={{ color: "var(--text)" }}
@@ -127,35 +122,28 @@ export default function DeliveryProfile() {
             {title}
           </h1>
 
-          {/* داخل DeliveryProfile */}
           <button
             onClick={() =>
               navigate("/delivery/dashboard/edit", {
-                state: {
-                  company, // فيه company_name, user_name, ...
-                  coverageAreas: coverage, // مصفوفة المدن الحالية
-                },
+                state: { company, coverageAreas: coverage },
               })
             }
-            className="flex items-center gap-2 px-5 py-2 rounded-full font-medium shadow-lg"
+            className="flex items-center gap-2 px-5 py-2 rounded-lg font-medium shadow-lg"
             style={{ backgroundColor: "var(--button)", color: "#fff" }}
           >
             <Pencil size={18} /> Edit Profile
           </button>
         </div>
 
-        {/* الديف الكبيرة */}
         <div
-          className="max-w-6xl mx-auto mt-6 px-6 py-8 rounded-3xl shadow-2xl"
+          className="max-w-6xl mx-auto mt-6 px-6 py-8 rounded-3xl "
           style={{
-            backgroundColor: "var(--div)",
+            backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
             color: "var(--text)",
             border: `1px solid var(--border)`,
           }}
         >
-          {/* Grid بطاقتين بنفس الارتفاع */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
-            {/* بطاقة معلومات الشركة */}
             <section className="h-full flex flex-col">
               <div className="mb-3">
                 <span
@@ -171,7 +159,7 @@ export default function DeliveryProfile() {
               </div>
 
               <div
-                className="p-6 rounded-2xl shadow-xl flex-1"
+                className="p-6 rounded-2xl  flex-1"
                 style={{
                   backgroundColor: "var(--bg)",
                   color: "var(--text)",
@@ -204,8 +192,11 @@ export default function DeliveryProfile() {
 
                 {coverage.length === 0 ? (
                   <button
-                    onClick={() => setShowModal(true)}
-                    className="mt-2 flex items-center gap-2 px-4 py-2 rounded-full font-medium shadow-lg"
+                    onClick={() => {
+                      setSelectedAreas(coverage); // ✅ تمييز المختار مسبقًا (حتى لو فاضي)
+                      setShowModal(true);
+                    }}
+                    className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg font-medium shadow-lg"
                     style={{
                       backgroundColor: "var(--button)",
                       color: "#ffffff",
@@ -214,14 +205,13 @@ export default function DeliveryProfile() {
                     <Plus size={18} /> Add Coverage Areas
                   </button>
                 ) : (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                     {coverage.map((area, idx) => (
                       <span
                         key={idx}
-                        className="px-3 py-1 rounded-lg font-medium shadow-sm"
+                        className="px-3 py-1 font-medium rounded-2xl text-center"
                         style={{
-                          backgroundColor: "var(--hover)",
-                          color: "var(--mid-dark)",
+                          color: isDarkMode ? "#ffffff" : "#292e2c",
                           border: `1px solid var(--border)`,
                         }}
                       >
@@ -249,7 +239,7 @@ export default function DeliveryProfile() {
               </div>
 
               <div
-                className="p-6 rounded-2xl shadow-xl flex-1"
+                className="p-6 rounded-2xl  flex-1"
                 style={{
                   backgroundColor: "var(--bg)",
                   color: "var(--text)",
@@ -275,7 +265,7 @@ export default function DeliveryProfile() {
 
         {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm sm:backdrop-blur-md flex items-center justify-center z-50">
             <div
               className="p-6 rounded-2xl shadow-2xl w-96"
               style={{
@@ -289,8 +279,7 @@ export default function DeliveryProfile() {
               <div
                 className="max-h-60 overflow-y-auto rounded-xl p-4"
                 style={{
-                  backgroundColor: "var(--textbox)",
-                  border: `1px solid var(--border)`,
+                  backgroundColor: "var(--bg)",
                 }}
               >
                 {ALLOWED_AREAS.map((area) => (
@@ -325,8 +314,7 @@ export default function DeliveryProfile() {
                   className="px-4 py-2 rounded-full"
                   style={{
                     backgroundColor: "var(--hover)",
-                    color: "var(--mid-dark)",
-                    border: `1px solid var(--border)`,
+                    color: isDarkMode ? "ffffff" : "#292e2c",
                   }}
                 >
                   Cancel
@@ -334,14 +322,15 @@ export default function DeliveryProfile() {
 
                 <button
                   onClick={handleSaveCoverage}
-                  className="px-4 py-2 rounded-full text-white shadow-lg"
+                  disabled={saving || selectedAreas.length === 0} // ✅ تعطيل أثناء الحفظ/بدون اختيار
+                  className="px-4 py-2 rounded-full text-white shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{
                     backgroundColor: "var(--button)",
                     color: "#ffffff",
                     boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
                   }}
                 >
-                  Save
+                  {saving ? "Saving..." : "Save"} {/* ✅ حالة تحميل */}
                 </button>
               </div>
             </div>
