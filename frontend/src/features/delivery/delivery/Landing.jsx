@@ -53,7 +53,7 @@ export default function LandingPage() {
     <>
       {/* ===== HERO ===== */}
       <div
-        className="min-h-screen flex flex-col items-center"
+        className="py-12 flex flex-col items-center"
         style={{
           backgroundColor: "transparent", // ✅ الخلفية العامة صارت شفافة
           color: "var(--text)",
@@ -61,12 +61,12 @@ export default function LandingPage() {
       >
         <div
           className="
-      w-full max-w-7xl mx-auto
-      flex flex-col md:grid md:grid-cols-2 items-center gap-12
-      p-10 pt-12 rounded-2xl relative overflow-hidden shadow-lg
-    "
+    w-full
+    flex flex-col md:grid md:grid-cols-2 items-center gap-12
+    pt-12 px-12 relative overflow-hidden 
+  "
           style={{
-            backgroundColor: isDark ? "#313131" : "#f5f6f5", // ✅ الكارد فقط عليه اللون
+            backgroundColor: isDark ? "#313131" : "#f5f6f5",
             color: "var(--text)",
             transition: "background-color 0.3s ease, color 0.3s ease",
           }}
@@ -126,7 +126,7 @@ export default function LandingPage() {
       </div>
 
       {/* ===== HOW IT WORKS ===== */}
-      <div className="w-full max-w-6xl p-10 mt-16 text-center mx-auto">
+      <div className="w-full max-w-6xl p-10 mt-6 text-center mx-auto">
         <h2
           className="text-4xl font-bold mb-16"
           style={{ color: isDark ? "#ffffff" : "#026a4b" }}
@@ -216,7 +216,7 @@ export default function LandingPage() {
       </div>
 
       {/* ===== BENEFITS ===== */}
-      <div className="w-full max-w-6xl p-10 mt-16 mb-24 text-center mx-auto">
+      <div className="w-full max-w-6xl p-10 mt-6 mb-24 text-center mx-auto">
         <h2
           className="text-3xl md:text-4xl font-bold mb-16"
           style={{ color: isDark ? "#ffffff" : "#026a4b" }}
