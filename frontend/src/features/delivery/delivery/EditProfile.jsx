@@ -1,17 +1,52 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   fetchDeliveryProfile,
   updateDeliveryProfile,
   fetchCoverageAreas,
-} from "./DeliveryAPI";
+  addCoverage,
+} from "./Api/DeliveryAPI";
 import { useSelector } from "react-redux";
 
+// ===================== API محلي: حذف مدينة واحدة =====================
+const API_BASE =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env?.VITE_API_BASE?.replace(/\/+$/, "")) ||
+  "http://localhost:3000/api/delivery";
+
+async function deleteCoverageCity(token, city) {
+  const url = `${API_BASE}/coverage`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ areas: [city] }),
+  });
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = { _raw: await res.text() };
+  }
+
+  if (!res.ok) {
+    const msg =
+      data?.message || data?.error || `Failed to delete city: ${city}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+// ===================== Component =====================
 export default function EditProfile() {
   const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const [originalData, setOriginalData] = useState({});
+  const [deletingCity, setDeletingCity] = useState(null);
+
   const navigate = useNavigate();
   const location = useLocation();
   const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
@@ -30,209 +65,371 @@ export default function EditProfile() {
     "Aqaba",
   ];
 
+  const uniq = (arr) => Array.from(new Set(arr || []));
+
+  // =============== Toast System ===============
+  const [toast, setToast] = useState({
+    show: false,
+    type: "success",
+    text: "",
+  });
+  const toastTimerRef = useRef(null);
+
+  const showToast = (type, text) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ show: true, type, text });
+    toastTimerRef.current = setTimeout(() => {
+      setToast((t) => ({ ...t, show: false }));
+    }, 3000);
+    // نضمن يكون ظاهر فورًا على أعلى الصفحة
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+  // ============================================
+
+  // ===================== تحميل البيانات =====================
   useEffect(() => {
     const loadProfile = async () => {
       try {
+        const fromStateCompany = location.state?.company;
+        const fromStateCoverage = location.state?.coverageAreas;
+
+        if (fromStateCompany) {
+          const initData = {
+            company_name: fromStateCompany.company_name || "",
+            coverage_areas: uniq(fromStateCoverage || []),
+            user_name: fromStateCompany.user_name || "",
+            user_phone: fromStateCompany.user_phone || "",
+          };
+          setFormData(initData);
+          setOriginalData(initData);
+          return;
+        }
+
         const token = localStorage.getItem("token");
-        const data = await fetchDeliveryProfile(token);
+        if (!token) throw new Error("Unauthorized");
+
+        const prof = await fetchDeliveryProfile(token);
+        const c = prof?.company || prof || {};
 
         let coverageAreas = location.state?.coverageAreas;
-        if (!coverageAreas || coverageAreas.length === 0) {
+        if (!Array.isArray(coverageAreas) || coverageAreas.length === 0) {
           coverageAreas = await fetchCoverageAreas(token);
         }
 
         const initData = {
-          company_name: data.company_name || "",
-          coverage_areas: coverageAreas || [],
-          user_name: data.user_name || "",
-          user_phone: data.user_phone || "",
+          company_name: c.company_name || "",
+          coverage_areas: uniq(coverageAreas),
+          user_name: c.user_name || "",
+          user_phone: c.user_phone || "",
         };
 
         setFormData(initData);
         setOriginalData(initData);
       } catch (err) {
-        setMessage("❌ " + err.message);
+        showToast("error", err.message || "Failed to load profile");
       }
     };
 
     loadProfile();
-  }, [location.state?.coverageAreas]);
+  }, [location.state?.company, location.state?.coverageAreas]);
 
+  // ===================== تغييرات الحقول =====================
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const getChangedFields = () => {
     const changed = {};
+    if (!formData) return changed;
+
     Object.keys(formData).forEach((key) => {
       if (key === "coverage_areas") {
-        if (
-          JSON.stringify(formData[key].sort()) !==
-          JSON.stringify((originalData[key] || []).sort())
-        ) {
-          changed[key] = formData[key];
+        const now = uniq(formData[key]).sort();
+        const was = uniq(originalData[key] || []).sort();
+        if (JSON.stringify(now) !== JSON.stringify(was)) {
+          changed[key] = now;
         }
       } else if (formData[key] !== originalData[key]) {
         changed[key] = formData[key];
       }
     });
+
     return changed;
   };
 
+  // ===================== حذف مدينة =====================
+  const handleDeleteCity = async (city) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Unauthorized");
+      setDeletingCity(city);
+
+      // حذف تفاؤلي
+      const prev = formData.coverage_areas;
+      const next = prev.filter((a) => a !== city);
+      setFormData((p) => ({ ...p, coverage_areas: next }));
+
+      await deleteCoverageCity(token, city);
+      showToast("success", `Deleted ${city} successfully`);
+    } catch (err) {
+      // رجوع في حال الفشل
+      setFormData((p) => {
+        const set = new Set(p.coverage_areas);
+        set.add(city);
+        return { ...p, coverage_areas: Array.from(set) };
+      });
+      showToast("error", err.message || "Delete failed");
+    } finally {
+      setDeletingCity(null);
+    }
+  };
+
+  // ===================== حفظ التغييرات =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage("");
+
     try {
       const token = localStorage.getItem("token");
-      const payload = getChangedFields();
+      if (!token) throw new Error("Unauthorized");
 
-      if (Object.keys(payload).length === 0) {
-        setMessage("ℹ️ No changes detected.");
+      const allChanges = getChangedFields();
+      const { coverage_areas, ...profileChanges } = allChanges;
+      const tasks = [];
+
+      if (Array.isArray(coverage_areas)) {
+        tasks.push(addCoverage(token, uniq(coverage_areas)));
+      }
+
+      if (Object.keys(profileChanges).length > 0) {
+        tasks.push(updateDeliveryProfile(token, profileChanges));
+      }
+
+      if (tasks.length === 0) {
+        showToast("info", "No changes detected.");
         setLoading(false);
         return;
       }
 
-      await updateDeliveryProfile(token, payload);
-      setMessage("✅ Profile updated successfully!");
-      navigate("/delivery/dashboard/getprofile");
+      await Promise.all(tasks);
+
+      // ✅ Toast بدل أي message
+      showToast("success", "Profile updated successfully!");
+      // انتقال بعد لحظة صغيرة
+      setTimeout(() => {
+        navigate("/delivery/dashboard/getprofile");
+      }, 1200);
     } catch (err) {
-      setMessage("❌ " + err.message);
+      showToast("error", err.message || "Failed to update profile");
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="w-16 h-16 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-
+  // ===================== واجهة الانتظار =====================
   if (!formData) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="w-16 h-16 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
+      >
+        <div
+          className="w-16 h-16 border-4 border-solid rounded-full animate-spin"
+          style={{
+            borderColor: "var(--primary)",
+            borderTopColor: "transparent",
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--button)] mx-auto mb-4"></div>
+          <p className="text-[var(--text)] text-lg">Loading...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className="max-w-5xl mx-auto mt-10 p-6 rounded-3xl shadow-2xl "
-      style={{
-        backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-        color: isDarkMode ? "#ffffff" : "#242625",
-      }}
-    >
-      <h2
-        className="text-3xl font-extrabold mb-6 text-center "
-        style={{
-          color: isDarkMode ? "#ffffff" : "#242625",
-        }}
-      >
-        Edit Delivery Profile
-      </h2>
+    <>
+      {/* ✅ Toast (Top Center) */}
+      {toast.show && (
+        <div
+          className={`fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg text-white font-semibold text-center z-[9999] transition-all duration-500 ${
+            toast.show ? "opacity-100" : "opacity-0 -translate-y-4"
+          }`}
+          style={{
+            minWidth: "280px",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+            backgroundColor:
+              toast.type === "success"
+                ? "var(--success)"
+                : toast.type === "error"
+                ? "var(--error)"
+                : "var(--warning)",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          {toast.type === "success"
+            ? "✅ "
+            : toast.type === "error"
+            ? "❌ "
+            : "ℹ️ "}
+          {toast.text}
+        </div>
+      )}
 
+      {/* العنوان */}
+      <div className="max-w-5xl mx-auto px-6 pt-8">
+        <h2
+          className="text-3xl font-extrabold mb-6"
+          style={{ color: "var(--text)" }}
+        >
+          Update My Profile
+        </h2>
+      </div>
+
+      {/* الفورم مباشرة بدون ديف خارجي */}
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-1 md:grid-cols-2 gap-8"
+        className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto p-6"
         style={{
-          color: isDarkMode ? "#ffffff" : "#242625",
+          color: "var(--text)",
+          backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
+          border: `1px solid var(--border)`,
+          borderRadius: "1.5rem",
+          boxShadow: "0 6px 15px rgba(0,0,0,0.1)",
         }}
       >
-        {/* Personal Info Card */}
+        {/* Personal Info */}
         <div
-          className="p-6 rounded-2xl shadow-xl"
+          className="p-6 rounded-2xl "
           style={{
-            color: isDarkMode ? "#ffffff" : "#242625",
-            backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
+            backgroundColor: isDarkMode ? "#313131" : "#ffffff",
+            border: `1px solid var(--border)`,
           }}
         >
-          <h3
-            className="text-2xl font-bold mb-4"
-            style={{
-              color: isDarkMode ? "#ffffff" : "#242625",
-            }}
-          >
-            Personal Info
-          </h3>
+          <h3 className="text-2xl font-bold mb-4">Personal Info</h3>
+
+          {/* User Name */}
           <div className="mb-4">
             <label className="block font-semibold mb-1">User Name</label>
             <input
               type="text"
               name="user_name"
               value={formData.user_name}
+              placeholder={originalData.user_name || "User name"}
               onChange={handleChange}
-              className="w-full border p-2 rounded-lg focus:ring-2 "
+              className="w-full p-2 rounded-lg focus:outline-none transition-all duration-150"
               style={{
-                backgroundColor: isDarkMode ? "#f9f9f9" : "#f9f9f9",
-                color: isDarkMode ? "#242625" : "#242625",
+                backgroundColor: "transparent",
+                color: isDarkMode ? "#ffffff" : "#000000",
+                border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+                boxShadow: "none",
               }}
+              onFocus={(e) =>
+                (e.currentTarget.style.boxShadow =
+                  "0 0 0 3px rgba(2,106,75,0.15)")
+              }
+              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
             />
           </div>
+
+          {/* Phone Number */}
           <div>
             <label className="block font-semibold mb-1">Phone Number</label>
             <input
               type="text"
               name="user_phone"
               value={formData.user_phone}
+              placeholder={originalData.user_phone || "Phone number"}
               onChange={handleChange}
-              className="w-full border p-2 rounded-lg "
+              className="w-full p-2 rounded-lg focus:outline-none transition-all duration-150"
               style={{
-                backgroundColor: isDarkMode ? "#f9f9f9" : "#f9f9f9",
-                color: isDarkMode ? "#242625" : "#242625",
+                backgroundColor: "transparent",
+                color: isDarkMode ? "#ffffff" : "#000000",
+                border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+                boxShadow: "none",
               }}
+              onFocus={(e) =>
+                (e.currentTarget.style.boxShadow =
+                  "0 0 0 3px rgba(2,106,75,0.15)")
+              }
+              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
             />
           </div>
         </div>
 
-        {/* Company Info Card */}
+        {/* Company Info */}
         <div
-          className="p-6 rounded-2xl shadow-xl "
+          className="p-6 rounded-2xl "
           style={{
-            color: isDarkMode ? "#ffffff" : "#242625",
-            backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
+            backgroundColor: isDarkMode ? "#313131" : "#ffffff",
+            border: `1px solid var(--border)`,
           }}
         >
-          <h3
-            className="text-2xl font-bold mb-4"
-            style={{
-              color: isDarkMode ? "#ffffff" : "#242625",
-            }}
-          >
-            Company Info
-          </h3>
+          <h3 className="text-2xl font-bold mb-4">Company Info</h3>
+
+          {/* Company Name */}
           <div className="mb-4">
             <label className="block font-semibold mb-1">Company Name</label>
             <input
               type="text"
               name="company_name"
               value={formData.company_name}
+              placeholder={originalData.company_name || "Company name"}
               onChange={handleChange}
-              className="w-full border p-2 rounded-lg "
+              className="w-full p-2 rounded-lg focus:outline-none transition-all duration-150"
               style={{
-                backgroundColor: isDarkMode ? "#f9f9f9" : "#f9f9f9",
-                color: isDarkMode ? "#242625" : "#242625",
+                backgroundColor: "transparent",
+                color: isDarkMode ? "#ffffff" : "#000000",
+                border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+                boxShadow: "none",
               }}
+              onFocus={(e) =>
+                (e.currentTarget.style.boxShadow =
+                  "0 0 0 3px rgba(2,106,75,0.15)")
+              }
+              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
             />
           </div>
 
           {/* Coverage Areas */}
           <label className="block font-semibold mb-2">Coverage Areas</label>
           <select
-            className="w-full border p-2 rounded mb-4 "
+            className="w-full p-2 rounded mb-4 focus:outline-none transition-all duration-150"
             style={{
-              backgroundColor: isDarkMode ? "#f9f9f9" : "#f9f9f9",
-              color: isDarkMode ? "#242625" : "#242625",
+              backgroundColor: "transparent",
+              color: isDarkMode ? "#ffffff" : "#000000",
+              border: `1px solid ${isDarkMode ? "#ffffff" : "#000000"}`,
+              boxShadow: "none",
+              appearance: "none",
             }}
+            onFocus={(e) =>
+              (e.currentTarget.style.boxShadow =
+                "0 0 0 3px rgba(2,106,75,0.15)")
+            }
+            onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
             onChange={(e) => {
               const area = e.target.value;
-              if (!formData.coverage_areas.includes(area)) {
+              if (area && !formData.coverage_areas.includes(area)) {
                 setFormData((prev) => ({
                   ...prev,
-                  coverage_areas: [...prev.coverage_areas, area],
+                  coverage_areas: Array.from(
+                    new Set([...prev.coverage_areas, area])
+                  ),
                 }));
               }
               e.target.value = "";
@@ -245,7 +442,7 @@ export default function EditProfile() {
             {ALLOWED_AREAS.filter(
               (a) => !formData.coverage_areas.includes(a)
             ).map((area) => (
-              <option key={area} value={area}>
+              <option key={area} value={area} style={{ color: "#000" }}>
                 {area}
               </option>
             ))}
@@ -255,26 +452,26 @@ export default function EditProfile() {
             {formData.coverage_areas.map((area) => (
               <span
                 key={area}
-                className="flex items-center  px-3 py-1 rounded-full "
+                className="flex items-center px-3 py-1 rounded-2xl"
                 style={{
-                  backgroundColor: isDarkMode ? "#f9f9f9" : "#f9f9f9",
-                  color: isDarkMode ? "#242625" : "#242625",
+                  color: isDarkMode ? "#ffffff" : "#292e2c",
+                  border: `1px solid var(--border)`,
                 }}
               >
                 {area}
                 <button
                   type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      coverage_areas: prev.coverage_areas.filter(
-                        (a) => a !== area
-                      ),
-                    }))
-                  }
-                  className="ml-2 text-red-600 font-bold hover:text-red-800"
+                  onClick={() => handleDeleteCity(area)}
+                  disabled={deletingCity === area}
+                  className="ml-2 font-bold"
+                  style={{
+                    color: isDarkMode ? "#ffffff" : "#292e2c",
+                    opacity: deletingCity === area ? 0.6 : 1,
+                    cursor: deletingCity === area ? "not-allowed" : "pointer",
+                  }}
+                  title={deletingCity === area ? "Deleting..." : "Remove"}
                 >
-                  ×
+                  {deletingCity === area ? "…" : "×"}
                 </button>
               </span>
             ))}
@@ -282,37 +479,38 @@ export default function EditProfile() {
         </div>
 
         {/* Buttons */}
-        <div className="md:col-span-2 flex gap-4 mt-6">
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 bg-  p-3 rounded-2xl font-semibold "
-            style={{
-              backgroundColor: isDarkMode ? "#307A59" : "#307A59", // من button في الثيمين
-              color: "#ffffff",
-            }}
-          >
-            {loading ? "Saving..." : "Save Changes"}
-          </button>
+        <div className="md:col-span-2 flex items-center justify-end gap-3 mt-4">
           <button
             type="button"
             onClick={() => navigate("/delivery/dashboard/getprofile")}
-            className="flex-1 p-3 rounded-2xl font-semibold "
+            className="rounded-lg text-sm font-semibold"
             style={{
-              backgroundColor: isDarkMode ? "#307A59" : "#307A59", // من button في الثيمين
-              color: "#ffffff",
+              padding: "8px 14px",
+              backgroundColor: "var(--bg)",
+              color: isDarkMode ? "#ffffff" : "#292e2c",
+              border: `1px solid var(--border)`,
             }}
           >
             Cancel
           </button>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-lg text-sm font-semibold"
+            style={{
+              padding: "8px 14px",
+              backgroundColor: "var(--button)",
+              color: "#ffffff",
+              border: `1px solid var(--border)`,
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loading ? "Saving..." : "Save Changes"}
+          </button>
         </div>
       </form>
-
-      {message && (
-        <p className="mt-4 text-center font-medium text-gray-800 animate-pulse">
-          {message}
-        </p>
-      )}
-    </div>
+    </>
   );
 }

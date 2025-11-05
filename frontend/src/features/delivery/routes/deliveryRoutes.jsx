@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import LandingPage from "../delivery/Landing";
 import RegisterDelivery from "../auth/RegisterDelivery";
+import ForgetPassword from "../auth/ForgetPassword";
 import LoginDelivery from "../auth/Login";
 import DeliveryProfile from "../delivery/DeliveryProfile";
 import EditProfile from "../delivery/EditProfile";
@@ -12,12 +13,14 @@ import Reports from "../delivery/ReportsPage";
 import Home from "../delivery/Home";
 import Chat from "../delivery/DeliveryChatPage";
 import NotFound from "../../notFound";
+
 export default function DeliveryRoutes() {
   return (
     <Routes>
       <Route path="delivery/" element={<LandingPage />} />
       <Route path="delivery/login" element={<LoginDelivery />} />
       <Route path="delivery/register" element={<RegisterDelivery />} />
+      <Route path="delivery/forgot-password" element={<ForgetPassword />} />
 
       <Route path="delivery/dashboard" element={<Dashboard />}>
         <Route index element={<Home />} />

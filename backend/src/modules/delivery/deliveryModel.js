@@ -172,7 +172,6 @@ exports.getOrderWithCompany = async function (orderId) {
     }
   }
 
-  
   // جلب المنتجات المرتبطة بالطلب مع الصور وبيانات الفندور
   const itemsRes = await pool.query(
     `SELECT
@@ -187,6 +186,7 @@ exports.getOrderWithCompany = async function (orderId) {
         v.latitude,
         v.longitude,
         v.store_name AS vendor_name,
+        u.id AS vendor_user_id,
         u.email AS vendor_email,
         u.phone AS vendor_phone,
         COALESCE(json_agg(pi.image_url) FILTER (WHERE pi.id IS NOT NULL), '[]') AS images
@@ -199,6 +199,7 @@ exports.getOrderWithCompany = async function (orderId) {
      GROUP BY oi.id, p.id, v.id, u.id`,
     [orderId]
   );
+
 
   order.items = itemsRes.rows;
 
@@ -298,15 +299,45 @@ exports.getCompany = async (userId) => {
  * @param {number} companyId - Company ID
  * @returns {Promise<Array>} List of orders
  */
-exports.getOrdersByCompanyId = async (companyId) => {
-  const result = await pool.query(
-    `SELECT id, customer_id, total_amount, status, payment_status, shipping_address, created_at, updated_at
-     FROM orders
-     WHERE delivery_company_id = $1
-     ORDER BY created_at DESC`,
+// يرجّع صفحة من الطلبات بدون أي "pending"
+exports.getOrdersByCompanyId = async (companyId, limit = 20, offset = 0) => {
+  const sql = `
+    WITH page AS (
+      SELECT
+        o.id, o.customer_id, o.total_amount, o.status, o.payment_status,
+        o.shipping_address, o.created_at, o.updated_at
+      FROM orders o
+      WHERE o.delivery_company_id = $1
+        AND o.status <> 'pending'                 -- ✅ استثناء pending
+      ORDER BY o.created_at DESC
+      LIMIT $2 OFFSET $3
+    )
+    SELECT
+      p.*,
+      -- لو بدك حقل all_accepted يضل موجود
+      NOT EXISTS (
+        SELECT 1 FROM order_items oi
+        WHERE oi.order_id = p.id
+          AND oi.vendor_status <> 'accepted'
+      ) AS all_accepted
+    FROM page p
+    ORDER BY p.created_at DESC;
+  `;
+  const { rows } = await pool.query(sql, [companyId, limit, offset]);
+  return rows;
+};
+
+exports.getOrdersCountByCompanyId = async (companyId) => {
+  const { rows } = await pool.query(
+    `
+    SELECT COUNT(*)::int AS cnt
+    FROM orders o
+    WHERE o.delivery_company_id = $1
+      AND o.status <> 'pending'                   -- ✅ نفس الفلتر
+    `,
     [companyId]
   );
-  return result.rows;
+  return rows[0]?.cnt || 0;
 };
 
 /**
@@ -368,6 +399,7 @@ exports.getCoverageById = async (userId) => {
 //   }
 // };
 
+// deliveryModel.js
 exports.addCoverage = async (userId, cities) => {
   const companyRes = await pool.query(
     `SELECT id FROM delivery_companies WHERE user_id=$1`,
@@ -376,26 +408,65 @@ exports.addCoverage = async (userId, cities) => {
   if (!companyRes.rows[0]) throw new Error("Company not found");
   const companyId = companyRes.rows[0].id;
 
-  const insertedRows = [];
+  // (اختياري لكن أنظف): نشتغل داخل ترانزاكشن
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-  for (const city of cities) {
-    const geo = await geocodeAddress(city);
-    const latitude = geo?.latitude || null;
-    const longitude = geo?.longitude || null;
+    const insertedRows = [];
 
-    const res = await pool.query(
-      `INSERT INTO delivery_coverage_locations
-       (delivery_company_id, city, latitude, longitude)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (delivery_company_id, city) DO NOTHING
-       RETURNING *`,
-      [companyId, city, latitude, longitude]
+    for (const rawCity of cities) {
+      // 🔹 توحيد وتهذيب الاسم (تصحيح إملائي بسيط + Title Case)
+      let city = String(rawCity || "").trim();
+      if (!city) continue;
+
+      // (اختياري) تصحيح شائع: Jaresh -> Jerash
+      if (city.toLowerCase() === "jaresh") city = "Jerash";
+
+      // Geocode
+      const geo = await geocodeAddress(city); // لازم ترجع { latitude, longitude } أو null
+      const latitude = geo?.latitude ?? null;
+      const longitude = geo?.longitude ?? null;
+
+      // إدخال مع منع التكرار على (delivery_company_id, city)
+      const res = await client.query(
+        `INSERT INTO delivery_coverage_locations
+           (delivery_company_id, city, latitude, longitude)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (delivery_company_id, city) DO NOTHING
+         RETURNING *`,
+        [companyId, city, latitude, longitude]
+      );
+
+      if (res.rows[0]) insertedRows.push(res.rows[0]);
+    }
+
+    // ✅ تحديث عمود coverage_areas في جدول الشركات من جدول التغطيات
+    await client.query(
+      `UPDATE delivery_companies
+       SET coverage_areas = (
+         SELECT ARRAY(
+           SELECT DISTINCT city
+           FROM delivery_coverage_locations
+           WHERE delivery_company_id = $1
+           ORDER BY city
+         )
+       ),
+       updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [companyId]
     );
 
-    if (res.rows[0]) insertedRows.push(res.rows[0]);
-  }
+    await client.query("COMMIT");
 
-  return insertedRows;
+    // (اختياري) ارجاع الصفوف المدخلة الآن
+    return insertedRows;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 /**
@@ -487,26 +558,67 @@ exports.updateCoverage = async (userId, data) => {
 // };
 
 exports.deleteCoverageAreas = async (userId, citiesToRemove) => {
-  const companyRes = await pool.query(
-    `SELECT id FROM delivery_companies WHERE user_id=$1`,
-    [userId]
-  );
-  if (!companyRes.rows[0]) return null;
+  // تأكيد مصفوفة نصوص نظيفة
+  const list = Array.isArray(citiesToRemove)
+    ? citiesToRemove.map((c) => String(c || "").trim()).filter(Boolean)
+    : [];
 
-  const companyId = companyRes.rows[0].id;
+  if (list.length === 0) return null;
 
-  const currentAreas = company.coverage_areas || [];
-  const newAreas = currentAreas.filter((area) => !areasToRemove.includes(area));
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-  const result = await pool.query(
-    `DELETE FROM delivery_coverage_locations
-     WHERE delivery_company_id=$1
-       AND city = ANY($2::text[])
-     RETURNING *`,
-    [companyId, citiesToRemove]
-  );
+    // 1) احصل على الشركة من user_id
+    const { rows: companyRows } = await client.query(
+      `SELECT id, coverage_areas
+         FROM delivery_companies
+        WHERE user_id = $1`,
+      [userId]
+    );
+    if (companyRows.length === 0) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    const companyId = companyRows[0].id;
 
-  return result.rows;
+    // 2) احذف من جدول مواقع التغطية
+    const { rows: deletedRows } = await client.query(
+      `DELETE FROM delivery_coverage_locations
+        WHERE delivery_company_id = $1
+          AND city = ANY($2::text[])
+        RETURNING city`,
+      [companyId, list]
+    );
+
+    // 3) حدّث ملخص المدن في جدول الشركات (مصدره الجدول التفصيلي)
+    await client.query(
+      `UPDATE delivery_companies
+          SET coverage_areas = (
+                SELECT ARRAY(
+                  SELECT DISTINCT city
+                    FROM delivery_coverage_locations
+                   WHERE delivery_company_id = $1
+                   ORDER BY city
+                )
+              ),
+              updated_at = NOW()
+        WHERE id = $1`,
+      [companyId]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      company_id: companyId,
+      deleted_cities: deletedRows.map((r) => r.city),
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 /**
  * Get weekly report for a delivery company
@@ -527,27 +639,30 @@ exports.getWeeklyReport = async (deliveryCompanyId, days = 7) => {
   const endTsExclusive = endPlus.toISOString();
 
   const totalQuery = `
-    SELECT COUNT(*)::int AS total_orders,
-           COALESCE(SUM(total_amount)::numeric, 0) AS total_amount
-    FROM orders
-    WHERE delivery_company_id = $1
-      AND created_at >= $2
-      AND created_at < $3
-  `;
+  SELECT COUNT(*)::int AS total_orders,
+         COALESCE(SUM(total_amount)::numeric, 0) AS total_amount
+  FROM orders
+  WHERE delivery_company_id = $1
+    AND created_at >= $2
+    AND created_at < $3
+    AND status <> 'pending'           -- ✅ استثناء الطلبات البيندينغ
+`;
+
   const totalRes = await pool.query(totalQuery, [
     deliveryCompanyId,
     startTs,
     endTsExclusive,
   ]);
+const paymentQuery = `
+  SELECT payment_status, COUNT(*)::int AS count
+  FROM orders
+  WHERE delivery_company_id = $1
+    AND created_at >= $2
+    AND created_at < $3
+    AND status <> 'pending'           -- ✅ استثناء طلبات الـ Order البندنق
+  GROUP BY payment_status
+`;
 
-  const paymentQuery = `
-    SELECT payment_status, COUNT(*)::int AS count
-    FROM orders
-    WHERE delivery_company_id = $1
-      AND created_at >= $2
-      AND created_at < $3
-    GROUP BY payment_status
-  `;
   const paymentRes = await pool.query(paymentQuery, [
     deliveryCompanyId,
     startTs,
@@ -623,7 +738,6 @@ exports.getWeeklyReport = async (deliveryCompanyId, days = 7) => {
     startTs,
     endTsExclusive,
   ]);
-
 
   // 7️⃣ الطلبات اليومية (للرسم البياني) - مع الأيام الفارغة
   const dailyOrdersQuery = `
