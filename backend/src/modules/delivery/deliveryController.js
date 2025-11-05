@@ -213,10 +213,10 @@ exports.getTrackingInfo = async function (req, res) {
  * @param {Object} res - Express response object
  * @returns {Promise<void>} JSON response with orders array
  */
+// controller/deliveryController.js
 exports.listCompanyOrders = async function (req, res) {
   try {
     let companyId;
-
     if (req.params.companyId) {
       companyId = parseInt(req.params.companyId, 10);
     } else {
@@ -227,16 +227,42 @@ exports.listCompanyOrders = async function (req, res) {
     if (!companyId || Number.isNaN(companyId))
       return res.status(400).json({ error: "Invalid company id" });
 
+    // لو عندك لوجيك لازم يشتغل قبل الجلب (يبقى كما هو)
     await Delivery.checkAndUpdateAcceptedOrdersForCompany(companyId);
 
-    const orders = await Delivery.getCompanyOrders(companyId);
+    // ✅ Pagination بدون كسر التوافق
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 20, 1),
+      100
+    ); // ✅ الافتراضي 20
+    const offset = (page - 1) * limit;
 
+    const { orders, total } = await Delivery.getCompanyOrders(
+      companyId,
+      limit,
+      offset
+    );
+
+    // لو بتحب تحافظ على نفس الـ shape: { orders } فقط
+    res.setHeader("X-Total-Count", total); // ممكن يفيد الفرونت بدون تغيير البودي
     return res.status(200).json({ orders });
+
+    // أو لو بدك ميتادات (اختياري):
+    // return res.status(200).json({
+    //   orders,
+    //   pagination: {
+    //     page, limit, total,
+    //     totalPages: Math.max(1, Math.ceil(total / limit)),
+    //     hasMore: offset + orders.length < total
+    //   }
+    // });
   } catch (err) {
     console.error("Error fetching company orders:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 /**
  * Display coverage areas for a delivery company
@@ -349,20 +375,22 @@ exports.deleteCoverage = async (req, res) => {
     const userId = req.user.id;
     const areas = req.body?.areas;
 
-    if (!Array.isArray(areas) || areas.length === 0)
+    if (!Array.isArray(areas) || areas.length === 0) {
       return res.status(400).json({ error: "areas must be a non-empty array" });
+    }
 
-    const updatedCompany = await Delivery.deleteCoverageArea(userId, areas);
-    if (!updatedCompany)
+    const updated = await Delivery.deleteCoverageArea(userId, areas);
+    if (!updated) {
       return res.status(404).json({ message: "coverage area not found" });
+    }
 
-    res.json({
+    return res.json({
       message: "coverage areas deleted successfully",
-      data: updatedCompany,
+      data: updated, // { company_id, deleted_cities: [...] }
     });
   } catch (err) {
     console.error("Delete coverage area error:", err);
-    res.status(500).json({ message: "Error deleting coverage areas" });
+    return res.status(500).json({ message: "Error deleting coverage areas" });
   }
 };
 

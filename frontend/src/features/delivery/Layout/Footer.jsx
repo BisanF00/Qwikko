@@ -7,55 +7,87 @@ export default function Footer() {
 
   return (
     <footer
-      className="py-4"
-      style={{
-        backgroundColor: isDarkMode ? "#242625" : "#f0f2f1",
-        color: isDarkMode ? "#ffffff" : "#242625",
-      }}
+      className={`py-8 px-10 border-t transition-colors duration-300 ${
+        isDarkMode
+          ? "bg-[var(--div)] border-[var(--border)] text-[var(--text)]"
+          : "bg-gradient-to-br from-[var(--button)] to-gray-700 border-[var(--button)] text-white"
+      }`}
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Logo Left */}
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+        {/* ✅ Logo */}
         <div className="flex items-center">
           <img
-            src={isDarkMode ? "/darklogo.png" : "/logo.png"}
+            src= "/darklogo.png"
             alt="Qwikko Logo"
             className="h-9"
           />
         </div>
 
-        {/* Links Center */}
-        <div className="flex flex-col items-center">
-          <div className="flex space-x-6 text-sm mb-1">
-            <Link to="/contact" className="hover:underline transition">
+        {/* ✅ Links + Text */}
+        <div className="flex flex-col items-center text-center">
+          <div className="flex space-x-8 text-sm mb-3">
+            <Link
+              to="/contact"
+              className={`hover:underline transition-colors duration-200 font-medium ${
+                isDarkMode
+                  ? "hover:text-[var(--primary)]"
+                  : "hover:text-white/80"
+              }`}
+            >
               Contact Us
             </Link>
-            <Link to="/about" className="hover:underline transition">
+            <Link
+              to="/about"
+              className={`hover:underline transition-colors duration-200 font-medium ${
+                isDarkMode
+                  ? "hover:text-[var(--primary)]"
+                  : "hover:text-white/80"
+              }`}
+            >
               About Us
             </Link>
           </div>
-          <p className="text-xs">2025 © All rights reserved</p>
+
+          <p
+            className={`text-xs ${
+              isDarkMode ? "text-[var(--light-gray)]" : "text-white/80"
+            }`}
+          >
+            © 2025 Qwikko. All rights reserved.
+          </p>
         </div>
 
-        {/* Social Icons Right */}
-        <div className="flex space-x-4">
+        {/* ✅ Social Icons */}
+        <div className="flex space-x-3">
           <a
             href="https://github.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded transition hover:bg-gray-300"
+            className={`p-3 rounded-full transition-all duration-200 shadow-sm ${
+              isDarkMode
+                ? "bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white"
+                : "bg-white/20 text-white hover:bg-white hover:text-[var(--button)]"
+            }`}
           >
-            <FaGithub size={20} />
+            <FaGithub size={18} />
           </a>
+
           <a
             href="https://linkedin.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded transition hover:bg-gray-300"
+            className={`p-3 rounded-full transition-all duration-200 shadow-sm ${
+              isDarkMode
+                ? "bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white"
+                : "bg-white/20 text-white hover:bg-white hover:text-[var(--button)]"
+            }`}
           >
-            <FaLinkedin size={20} />
+            <FaLinkedin size={18} />
           </a>
         </div>
       </div>
+
+ 
     </footer>
   );
 }

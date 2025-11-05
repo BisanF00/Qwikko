@@ -19,10 +19,26 @@ export const fetchCoverageAreas = async (token) => {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to fetch coverage areas");
 
-  return data.coverage_areas || [];
+  // 🔽 تطبيع مرن يطلع names فقط مهما كان شكل الرد
+  const toCities = (arr) =>
+    Array.isArray(arr)
+      ? arr.map((x) => (typeof x === "string" ? x : x?.city)).filter(Boolean)
+      : [];
+
+  // حالات محتملة للرد:
+  // 1) مصفوفة صفوف: [{ city, latitude, longitude, ... }, ...]
+  if (Array.isArray(data)) return toCities(data);
+
+  // 2) { coverage_areas: [...] } أو { company: { coverage_areas: [...] } }
+  if (Array.isArray(data.coverage_areas)) return toCities(data.coverage_areas);
+  if (Array.isArray(data.company?.coverage_areas))
+    return toCities(data.company.coverage_areas);
+
+  // 3) fallback
+  return [];
 };
 
-// why ? in profile when there is no areas
+
 export async function addCoverage(token, areas) {
   const res = await fetch("http://localhost:3000/api/delivery/coverage", {
     method: "POST",
@@ -30,14 +46,24 @@ export async function addCoverage(token, areas) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ areas }),
+    // ✅ نرسل أسماء المدن فقط، والـ backend يتولى الباقي
+    body: JSON.stringify({
+      areas, // ["Amman", "Irbid", "Zarqa", ...]
+      useGoogle: true, // 👉 علَمي للسيرفر يستخدم Google Maps geocoding
+    }),
   });
+
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to add coverage");
-  return data; // بيرجع { coverage_areas: [...] }
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to add coverage");
+  }
+
+  // backend بيرجع { company: {..., coverage_areas: [...] } }
+  return data;
 }
 
-//delivery profile edit
+
 //all endpoints in edit profile:
 export const updateDeliveryProfile = async (token, payload) => {
   const res = await fetch("http://localhost:3000/api/delivery/profile", {
@@ -76,16 +102,33 @@ export async function updateCoverage(token, companyId, data) {
   return result; // بيرجع { message: "...", data: {...} }
 }
 
-//Orders
-export const fetchCompanyOrders = async () => {
+export const fetchCompanyOrders = async (page = 1, limit = 20) => {
   const token = localStorage.getItem("token");
-  const res = await fetch("http://localhost:3000/api/delivery/orders", {
+  const url = `http://localhost:3000/api/delivery/orders?page=${page}&limit=${limit}`;
+
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to fetch orders");
-  return data.orders || [];
+
+  const total = Number(res.headers.get("X-Total-Count") || 0);
+  const orders = data.orders || [];
+
+  return {
+    orders,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+      hasMore: page * limit < total,
+    },
+  };
 };
+
+
 
 //modal in orders.jsx
 export const updateOrderStatus = async (orderId, status) => {

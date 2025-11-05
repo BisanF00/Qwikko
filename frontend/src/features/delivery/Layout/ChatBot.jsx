@@ -13,7 +13,6 @@ const ChatBot = ({ userId }) => {
   const socketRef = useRef();
   const messagesEndRef = useRef();
 
-  // موجود لو احتجتي تتفرعي لاحقًا
   const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
 
   useEffect(() => {
@@ -57,11 +56,22 @@ const ChatBot = ({ userId }) => {
         color: "var(--text)",
       }}
     >
+      {/* Header داخل المكوّن إذا احتجتيه */}
+      {/* <div
+        className="px-4 py-3 font-semibold"
+        style={{
+          backgroundColor: isDarkMode ? "var(--mid-dark)" : "var(--textbox)",
+          color: "var(--text)",
+          boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+        }}
+      >
+        Qwikko Chatbot
+      </div> */}
 
       {/* Messages */}
       <div
         className="flex-1 overflow-y-auto p-4 space-y-3"
-        style={{ backgroundColor: "var(--div)" }}
+        style={{ backgroundColor: "var(--bg)" }}
       >
         {messages.map((msg, index) => (
           <div
@@ -76,7 +86,7 @@ const ChatBot = ({ userId }) => {
               style={{
                 maxWidth: msg.sender === "user" ? "85%" : "65%",
                 backgroundColor:
-                  msg.sender === "user" ? "var(--button)" : "var(--hover)",
+                  msg.sender === "user" ? "var(--button)" : "var(--div)",
                 color: msg.sender === "user" ? "#ffffff" : "var(--text)",
                 borderRadius:
                   msg.sender === "user"
@@ -136,7 +146,7 @@ const ChatBot = ({ userId }) => {
           <div
             className="max-w-[60%] p-2 rounded-2xl animate-pulse self-start shadow-sm"
             style={{
-              backgroundColor: "var(--hover)",
+              backgroundColor: "var(--div)",
               color: "var(--text)",
               border: "none",
             }}
