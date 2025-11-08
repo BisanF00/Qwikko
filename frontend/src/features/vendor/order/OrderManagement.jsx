@@ -69,15 +69,23 @@ export default function OrderManagement() {
   const borderColor = isDarkMode ? "#f9f9f9" : "#ccc";
   const inputBg = isDarkMode ? "#666666" : "#ffffff";
 
-  return (
-    <div
-      className="p-6 space-y-6"
-      style={{ backgroundColor: pageBg, color: textColor }}
-    >
-      <h1 className="text-2xl font-bold mb-6">Order Management</h1>
+return (
+  <div
+    className="min-h-screen w-full"
+    style={{
+      backgroundColor: isDarkMode ? "var(--bg-dark)" : "var(--bg)",
+      color: "var(--text)",
+      padding: "3rem",
+    }}
+  >
+    {/* الحاوية العامة متجاوبة */}
+    <div className="max-w-screen-xl mx-auto px-4 sm:px-8 lg:px-12 py-8 sm:py-12 lg:py-16">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-10 text-center sm:text-left">
+        Order Management
+      </h1>
 
-      {/* Filter Buttons */}
-      <div className="mb-6 flex flex-wrap gap-3">
+      {/* أزرار الفلترة */}
+      <div className="mb-8 flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3">
         {Object.keys(STATUS_LABELS).map((key) => (
           <button
             key={key}
@@ -86,7 +94,7 @@ export default function OrderManagement() {
               setVisibleCount(4); // إعادة الضبط عند تغيير الفلتر
               loadItems(key);
             }}
-            className={`px-4 py-1 rounded-2xl border transition-all duration-300 ${
+            className={`px-3 sm:px-4 py-1 rounded-2xl border text-sm sm:text-base transition-all duration-300 ${
               filter === key
                 ? "bg-[#307A59] text-white border-[#307A59] shadow-md"
                 : "bg-white text-gray-500 border-gray-300 hover:bg-gray-100"
@@ -97,17 +105,19 @@ export default function OrderManagement() {
         ))}
       </div>
 
-      {/* Orders Table */}
+      {/* جدول الطلبات */}
       <div
-        className="p-6 rounded-2xl shadow"
+        className="p-4 sm:p-6 rounded-2xl shadow overflow-x-auto"
         style={{ backgroundColor: innerBg, color: textColor }}
       >
         {loading ? (
-          <p style={{ color: textColor }}>Loading items...</p>
+          <p className="text-center" style={{ color: textColor }}>
+            Loading items...
+          </p>
         ) : (
           <>
             <table
-              className="w-full border-collapse"
+              className="w-full border-collapse text-sm sm:text-base"
               style={{ color: textColor }}
             >
               <thead>
@@ -138,12 +148,9 @@ export default function OrderManagement() {
                       <select
                         value={item.vendor_status}
                         onChange={(e) =>
-                          handleStatusChange(
-                            item.order_item_id,
-                            e.target.value
-                          )
+                          handleStatusChange(item.order_item_id, e.target.value)
                         }
-                        className="p-1 rounded-md font-medium"
+                        className="p-1 rounded-md font-medium text-sm sm:text-base"
                         style={{
                           backgroundColor: inputBg,
                           color: textColor,
@@ -174,7 +181,7 @@ export default function OrderManagement() {
               </tbody>
             </table>
 
-            {/* Show More Button */}
+            {/* زر Show More */}
             {visibleCount < items.length && (
               <div className="mt-4 flex justify-center">
                 <button
@@ -189,5 +196,7 @@ export default function OrderManagement() {
         )}
       </div>
     </div>
-  );
+  </div>
+);
+
 }
