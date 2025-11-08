@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate , Link} from "react-router-dom";
 import {
   FiMenu,
   FiChevronDown,
@@ -131,13 +131,17 @@ export default function Navbar({ isSidebarOpen, toggleSidebar, user }) {
 
           {!isSidebarOpen && (
             <div className="text-2xl font-bold">
-              <div className="py-2 flex items-center">
+              <Link
+                to="/delivery/dashboard/Home"
+                className="py-2 flex items-center focus:outline-none cursor-pointer"
+                aria-label="Go to Home"
+              >
                 <img
                   src="/LogoDark.png"
                   alt="Qwikko Logo"
                   className="h-8 sm:h-9 mt-1 sm:mt-3"
                 />
-              </div>
+              </Link>
             </div>
           )}
         </div>
@@ -197,19 +201,20 @@ w-[50vw] sm:w-56
                   <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
                 </button>
 
-                {/* ✅ Logout بنفس مستوى الأزرار */}
                 <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    setShowLogoutModal(true);
-                  }}
-                  className="flex items-center gap-3 w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-[var(--hover)] border-t"
-                  style={{
-                    color: "var(--text)",
-                    borderColor: "var(--border)",
-                  }}
+                  onClick={() => setShowLogoutModal(true)}
+                  className="
+    group flex items-center gap-3
+    w-full text-left
+    px-4 py-3
+    rounded-md
+    transition-colors duration-200
+    text-[var(--text)]
+    hover:bg-[var(--error)]
+    hover:!text-white
+  "
                 >
-                  <FiLogOut />
+                  <FiLogOut className="text-current group-hover:text-white" />
                   <span>Logout</span>
                 </button>
               </div>

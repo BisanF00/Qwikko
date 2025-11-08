@@ -128,9 +128,9 @@ export default function DeliveryDashboard() {
             >
               {/* Controls */}
               <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
-                <p className="text-sm sm:text-base opacity-80">
+                {/* <p className="text-sm sm:text-base opacity-80">
                   Range: <span className="font-semibold">{days} days</span>
-                </p>
+                </p> */}
                 <select
                   value={days}
                   onChange={(e) => setDays(Number(e.target.value))}

@@ -333,9 +333,8 @@ exports.recomputeOrderStatusTx = async (client, orderId) => {
   return up.rows[0];
 };
 
-/**
- * نسخة خارجية (لو حبيت تناديها بدون ترانزاكشن)
- */
+//---------------------------------------------------------------------------------------------
+
 exports.recomputeOrderStatus = async (orderId) => {
   const client = await pool.connect();
   try {
@@ -371,6 +370,23 @@ exports.updateOrderItemStatus = async ({
       throw new Error("Vendor not found");
     }
     const vendorId = v.rows[0].id;
+
+    // ✅ قفل الطلب وفحص حالته قبل أي تعديل
+    const ordRes = await client.query(
+      `SELECT id, status FROM orders WHERE id = $1 FOR UPDATE`,
+      [orderId]
+    );
+    if (ordRes.rows.length === 0) {
+      throw new Error("Order not found");
+    }
+    const ord = ordRes.rows[0];
+
+    // ⛔ إذا الطلب ملغى: لا تعدّل مخزون ولا عناصر — ارجع بخطأ 409
+    if ((ord.status || "").toLowerCase() === "cancelled") {
+      const err = new Error("Order has been cancelled by the customer");
+      err.statusCode = 409; // Conflict
+      throw err;
+    }
 
     // ✅ جلب الآيتم + المنتج (مع قفل الصفوف) والتأكد أنه يتبع لنفس الفندور وهذا الأوردر
     const itemRes = await client.query(
@@ -414,7 +430,7 @@ exports.updateOrderItemStatus = async ({
       );
     }
 
-    // ✅ تحديث حالة الآيتم (بدون أي updated_at على order_items لأنه غير موجود عندك)
+    // ✅ تحديث حالة الآيتم
     const timeSet =
       newStatus === "accepted"
         ? `accepted_at = NOW(), rejected_at = NULL`

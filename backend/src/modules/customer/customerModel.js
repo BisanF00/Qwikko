@@ -1749,8 +1749,6 @@ exports.redeemPoints = async (userId, points, description) => {
  * يعيد حساب حالة الطلب من آيتماته
  * - نفس منطقك السابق بالضبط
  */
-// ✅ Export قبل اسم الفنكشن
-// models/customerModel.js (أو وين ما عندك هالدوال)
 
 exports.recomputeOrderStatus = async function recomputeOrderStatus(orderId) {
   const q = `
@@ -1853,20 +1851,51 @@ exports.applyCustomerDecision = async ({ orderId, customerId, action }) => {
 
     if (action === "cancel_order") {
       // 3-A) إلغاء كامل الطلب
+
+      // ✅ استرجاع المخزون لكل العناصر المقبولة قبل ما نغيّر حالة الطلب
+      //   - منرجّع quantity لكل منتج كانت حالته accepted
+      if (items.length) {
+        const { rows: acceptedItems } = await client.query(
+          `
+        SELECT oi.product_id, oi.quantity
+        FROM order_items oi
+        WHERE oi.order_id = $1
+          AND LOWER(oi.vendor_status) = 'accepted'
+      `,
+          [orderId]
+        );
+
+        if (acceptedItems.length) {
+          // نرجّع كميات المنتجات
+          // ممكن نعمله بواحدة واحدة (واضح وبسيط)
+          for (const it of acceptedItems) {
+            await client.query(
+              `
+            UPDATE products
+            SET stock_quantity = stock_quantity + $1,
+                updated_at = NOW()
+            WHERE id = $2
+          `,
+              [it.quantity, it.product_id]
+            );
+          }
+        }
+      }
+
+      // ✅ حدّث الطلب إلى cancelled
       const { rows: up } = await client.query(
         `
-          UPDATE orders
-          SET status = 'cancelled',
-              customer_action_required = false,
-              customer_decision = 'cancel_order',
-              updated_at = NOW()
-          WHERE id = $1
-          RETURNING *;
-        `,
+      UPDATE orders
+      SET status = 'cancelled',
+          customer_action_required = false,
+          customer_decision = 'cancel_order',
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *;
+    `,
         [orderId]
       );
 
-      // رجّع الطلب + عناصره الأصلية (ما منحتاج نحذف الآيتمات عند الإلغاء)
       await client.query("COMMIT");
       return { ...up[0], items };
     }

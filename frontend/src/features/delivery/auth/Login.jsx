@@ -51,29 +51,15 @@ export default function Login() {
       >
         <h2 className="text-3xl font-bold mb-6">Delivery Login</h2>
 
-        {/* Success / Info Message */}
-        {successMessage && (
-          <div
-            className={`w-full max-w-md p-3 rounded-lg mb-4 text-center transition-colors duration-300
-            ${
-              isDarkMode
-                ? "bg-[var(--success)] bg-opacity-20 text-green-200"
-                : "bg-[var(--success)] bg-opacity-20 text-green-700"
-            }`}
-          >
-            {successMessage}
-          </div>
-        )}
-
         {/* Error Message */}
+        {/* Error Message (بدون خلفية) */}
         {error && (
           <div
-            className={`w-full max-w-md p-3 rounded-lg mb-4 text-center transition-colors duration-300
-            ${
-              isDarkMode
-                ? "bg-[var(--error)] bg-opacity-20 text-red-200"
-                : "bg-[var(--error)] bg-opacity-20 text-red-700"
+            className={`w-full max-w-md mb-4 text-center text-sm ${
+              isDarkMode ? "text-red-300" : "text-red-600"
             }`}
+            role="alert"
+            aria-live="assertive"
           >
             {error}
           </div>
@@ -203,7 +189,7 @@ export default function Login() {
         ${
           isDarkMode
             ? "bg-[var(--mid-dark)] text-[var(--text)]"
-            : "bg-[var(--div)] text-[var(--text)]"
+            : "bg-[var(--textbox)] text-[var(--text)]"
         }`}
       >
         <img

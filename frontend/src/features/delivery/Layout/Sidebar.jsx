@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   FaUser,
   FaClipboardList,
@@ -102,19 +102,24 @@ const navLinks = [
         aria-modal="true"
         aria-label="Sidebar"
       >
-        {/* عمود كامل: الناف ياخذ المساحة، واللوج آوت مثبت تحت */}
         <div className="h-full flex flex-col overflow-y-auto min-h-0 md:overflow-visible">
-          {/* Header بسيط (بدون تغيير لون مستقل) */}
           <div
-            className="flex items-center gap-4 px-4 py-4 border-b mt-4"
+            className="flex items-center gap-4 px-8 h-14 "
             style={{ borderColor: "var(--border)" }}
           >
-            <img
-              src={effectiveLogo}
-              alt="Logo"
-              className="h-8 w-auto select-none"
-              draggable="false"
-            />
+            <NavLink
+              to="/delivery/dashboard/Home"
+              onClick={() => isOpen && toggleSidebar()}
+              className="flex items-center cursor-pointer"
+              aria-label="Go to dashboard home"
+            >
+              <img
+                src={effectiveLogo}
+                alt="Logo"
+                className="h-8 w-auto select-none"
+                draggable="false"
+              />
+            </NavLink>
           </div>
 
           {/* Navigation */}
@@ -149,30 +154,26 @@ const navLinks = [
             </div>
           </nav>
 
-          {/* Footer: Log out ثابت بأسفل السايدبار */}
           <div
             className="
-    px-4 pb-4 pt-2 
+    px-8 pt-2 pb-6
     mt-auto
-    sticky bottom-0
+    sticky bottom-0  
     z-10
     bg-[var(--bg)]/95 backdrop-blur border-t
     shadow-[0_-6px_12px_-6px_rgba(0,0,0,0.15)]
     md:static md:bg-transparent md:backdrop-blur-0 md:border-t-0 md:shadow-none
-    pb-[env(safe-area-inset-bottom)]
+    pb-[env(safe-area-inset-bottom)]  /* ✅ لمسافة آمنة بالموبايل */
   "
             style={{ borderColor: "var(--border)" }}
           >
             <button
               onClick={() => {
                 setShowLogoutModal(true);
-                handleItemClick();
+                isOpen && toggleSidebar();
               }}
-              className="group flex items-center gap-2 p-2 rounded w-full text-left font-semibold transition-colors duration-150"
-              style={{
-                color: "var(--text)",
-                backgroundColor: "transparent",
-              }}
+              className="group flex items-center gap-2 p-2 w-full rounded text-left font-semibold transition-colors duration-150"
+              style={{ color: "var(--text)", backgroundColor: "transparent" }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "var(--error)";
                 e.currentTarget.style.color = "#fff";
@@ -187,6 +188,9 @@ const navLinks = [
               <FiLogOut className="text-lg" />
               <span>Log out</span>
             </button>
+
+            {/* سبايسر صغير إذا بدك زيادة فراغ تحت */}
+            <div className="h-3" />
           </div>
         </div>
       </aside>

@@ -845,7 +845,6 @@ exports.redeemLoyaltyPoints = async (req, res) => {
 };
 
 
-// controllers/customerController.js
 exports.submitOrderDecision = async (req, res) => {
   try {
     const customerId = req.user.id;

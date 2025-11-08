@@ -68,28 +68,14 @@ export default function RegisterDelivery() {
 
         {/* Error banner */}
         {error && (
-          <div
-            className={`w-full max-w-md p-3 rounded-lg mb-4 text-center transition-colors duration-300
-            ${
-              isDarkMode
-                ? "bg-[var(--error)] bg-opacity-20 text-red-200"
-                : "bg-[var(--error)] bg-opacity-20 text-red-700"
-            }`}
-          >
+          <div className="w-full max-w-md mb-2 text-center text-red-600">
             {error}
           </div>
         )}
 
         {/* Success banner */}
         {successMessage && (
-          <div
-            className={`w-full max-w-md p-3 rounded-lg mb-4 text-center transition-colors duration-300
-            ${
-              isDarkMode
-                ? "bg-[var(--success)] bg-opacity-20 text-green-200"
-                : "bg-[var(--success)] bg-opacity-20 text-green-700"
-            }`}
-          >
+          <div className="w-full max-w-md mb-2 text-center text-green-600">
             {successMessage}
           </div>
         )}
@@ -335,7 +321,7 @@ export default function RegisterDelivery() {
         ${
           isDarkMode
             ? "bg-[var(--mid-dark)] text-[var(--text)]"
-            : "bg-[var(--div)] text-[var(--text)]"
+            : "bg-[var(--textbox)] text-[var(--text)]"
         }`}
       >
         <img

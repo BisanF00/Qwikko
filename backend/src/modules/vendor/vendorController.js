@@ -245,6 +245,8 @@ exports.getVendorOrderItems = async (req, res) => {
 
 
 
+//----------------------------------------------------------------
+
 exports.updateOrderItemStatus = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -269,10 +271,15 @@ exports.updateOrderItemStatus = async (req, res) => {
     return res.json({ success: true, data: result });
   } catch (err) {
     console.error("Update order item status error:", err);
-    return res.status(500).json({
+
+    // لو إجى من السيرفس err.statusCode (مثلاً 409 لما يكون الطلب مُلغى)
+    const status = err.statusCode && Number.isInteger(err.statusCode) ? err.statusCode : 500;
+
+    return res.status(status).json({
       success: false,
       message: err.message || "Error updating order item status",
     });
   }
 };
+
 
