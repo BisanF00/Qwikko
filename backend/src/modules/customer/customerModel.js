@@ -8,6 +8,7 @@ const {
 const axios = require("axios");
 require("dotenv").config();
 const { geocodeAddress } = require("../../utils/geocoding");
+const { validateCoupon } = require("../coupon/CouponModel");
 
 /**
  * ============================
@@ -90,6 +91,179 @@ exports.getStoreById = async function (storeId) {
   return result.rows[0];
 };
 
+exports.calculateDeliveryPreview = async function (
+  cartId,
+  userId,
+  address,
+  addressId
+) {
+  // 1️⃣ جلب عناصر الـ cart
+  const cartItemsResult = await pool.query(
+    `SELECT ci.product_id, ci.quantity, ci.variant, p.price, p.vendor_id
+       FROM cart_items ci
+       JOIN products p ON ci.product_id = p.id
+       JOIN carts c ON ci.cart_id = c.id
+       WHERE ci.cart_id = $1 AND c.user_id = $2`,
+    [cartId, userId]
+  );
+
+  if (cartItemsResult.rows.length === 0) {
+    throw new Error("Cart is empty or not found");
+  }
+
+  // 2️⃣ جلب أو إنشاء عنوان العميل
+  let savedAddress;
+  if (addressId) {
+    const existingAddress = await pool.query(
+      `SELECT * FROM addresses WHERE id = $1 AND user_id = $2`,
+      [addressId, userId]
+    );
+    if (existingAddress.rows.length === 0) throw new Error("Address not found");
+    savedAddress = existingAddress.rows[0];
+  } else {
+    if (!address.latitude || !address.longitude) {
+      const geo = await geocodeAddress(
+        `${address.address_line1}, ${address.city}`
+      );
+      if (geo) {
+        address.latitude = geo.latitude;
+        address.longitude = geo.longitude;
+      }
+    }
+    const addressResult = await pool.query(
+      `INSERT INTO addresses (user_id, address_line1, address_line2, city, state, postal_code, country, latitude, longitude)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [
+        userId,
+        address.address_line1,
+        address.address_line2 || "",
+        address.city,
+        address.state || "",
+        address.postal_code || "",
+        address.country || "Jordan",
+        address.latitude || null,
+        address.longitude || null,
+      ]
+    );
+    savedAddress = addressResult.rows[0];
+  }
+
+  // 3️⃣ جلب شركات التوصيل المتاحة
+  let deliveryCompaniesResult = await pool.query(
+    `SELECT id, latitude, longitude, company_name
+      FROM delivery_companies
+      WHERE EXISTS (
+        SELECT 1 FROM unnest(coverage_areas) AS area WHERE LOWER(area) = LOWER($1)
+      ) AND status = 'approved'`,
+    [savedAddress.city]
+  );
+
+  let deliveryCompanies = deliveryCompaniesResult.rows;
+  if (deliveryCompanies.length === 0) {
+    const fallback = await pool.query(
+      `SELECT id, latitude, longitude, company_name
+        FROM delivery_companies WHERE status='approved' LIMIT 1`
+    );
+    if (fallback.rows.length === 0)
+      throw new Error("No delivery companies available");
+    deliveryCompanies = fallback.rows;
+  }
+
+  const deliveryCompany = deliveryCompanies[0];
+
+  // 4️⃣ تجهيز كل النقاط للطريق: Delivery → Vendors → Customer
+  const points = [];
+  if (deliveryCompany.latitude && deliveryCompany.longitude) {
+    points.push({
+      lat: deliveryCompany.latitude,
+      lng: deliveryCompany.longitude,
+    });
+  }
+
+  // جلب إحداثيات كل vendors
+  const vendorIds = [...new Set(cartItemsResult.rows.map((i) => i.vendor_id))];
+  const vendorsQuery = await pool.query(
+    `SELECT id, latitude, longitude, store_name FROM vendors WHERE id = ANY($1)`,
+    [vendorIds]
+  );
+  const vendors = vendorsQuery.rows;
+
+  vendors.forEach((v) => {
+    if (v.latitude && v.longitude) {
+      points.push({ lat: v.latitude, lng: v.longitude, label: v.store_name });
+    }
+  });
+
+  // إضافة العميل في النهاية
+  points.push({
+    lat: savedAddress.latitude,
+    lng: savedAddress.longitude,
+    label: "Customer",
+  });
+
+  // 5️⃣ حساب المسافة الإجمالية
+  let totalDistance = null;
+  let delivery_fee = 0.5;
+
+  if (points.length >= 2) {
+    try {
+      const origin = points[0];
+      const destination = points[points.length - 1];
+      const waypoints = points
+        .slice(1, -1)
+        .map((p) => `${p.lat},${p.lng}`)
+        .join("|");
+
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${
+        origin.lat
+      },${origin.lng}&destination=${destination.lat},${destination.lng}${
+        waypoints ? `&waypoints=${waypoints}` : ""
+      }&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+
+      const response = await axios.get(url);
+
+      if (response.data.routes?.length > 0 && response.data.routes[0].legs) {
+        totalDistance = response.data.routes[0].legs.reduce(
+          (sum, leg) => sum + leg.distance.value / 1000,
+          0
+        );
+      }
+    } catch (err) {
+      console.log(
+        "Directions API failed, fallback to straight distance:",
+        err.message
+      );
+    }
+
+    // fallback: حساب المسافة المستقيمة بين النقاط
+    if (totalDistance === null) {
+      totalDistance = calculateTotalRouteDistance(points); // لازم تكون عندك دالة لحساب مجموع المسافات المستقيمة
+    }
+    delivery_fee = totalDistance * 0.2;
+  }
+
+  delivery_fee = parseFloat(delivery_fee.toFixed(2));
+
+  // 6️⃣ حساب المجموع قبل أي خصومات
+  let total_amount = 0;
+  cartItemsResult.rows.forEach(
+    (item) => (total_amount += item.price * item.quantity)
+  );
+  const total_with_shipping = parseFloat(
+    (total_amount + delivery_fee).toFixed(2)
+  );
+
+  return {
+    total_amount,
+    delivery_fee,
+    total_with_shipping,
+    distance_km: parseFloat(totalDistance?.toFixed(2)) || 0,
+    vendors,
+    deliveryCompany,
+    customer_location: savedAddress,
+  };
+};
+
 /**
  * Place order from cart (Cash on Delivery)
  * @param {number} userId - Customer ID
@@ -106,8 +280,8 @@ exports.placeOrderFromCart = async function ({
   addressId,
   paymentMethod,
   paymentData,
-  coupon_code,
-  use_loyalty_points = false
+  coupons,
+  use_loyalty_points = false,
 }) {
   const client = await pool.connect();
   let order = null;
@@ -117,11 +291,12 @@ exports.placeOrderFromCart = async function ({
   let discount_amount_total = 0;
 
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
-    // 🔥 الإصلاح الأساسي: تحويل use_loyalty_points إلى رقم
+    // 1️⃣ Fetch cart items
+    
     use_loyalty_points = parseInt(use_loyalty_points) || 0;
-    console.log("💰 Processing loyalty points (converted):", use_loyalty_points, "Type:", typeof use_loyalty_points);
+    console.log(" Processing loyalty points (converted):", use_loyalty_points, "Type:", typeof use_loyalty_points);
 
     // 1️⃣ جلب عناصر السلة
     const cartItemsResult = await client.query(
@@ -190,40 +365,104 @@ exports.placeOrderFromCart = async function ({
     // 4️⃣ حساب رسوم التوصيل
     let delivery_fee = 0.5;
     let minDistance = null;
-    if (savedAddress.latitude && savedAddress.longitude &&
-        deliveryCompanies[0].latitude && deliveryCompanies[0].longitude) {
+    if (
+      savedAddress.latitude &&
+      savedAddress.longitude &&
+      deliveryCompanies[0].latitude &&
+      deliveryCompanies[0].longitude
+    ) {
+
       try {
         const distanceUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${deliveryCompanies[0].latitude},${deliveryCompanies[0].longitude}&destinations=${savedAddress.latitude},${savedAddress.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
         const distanceResponse = await axios.get(distanceUrl);
         const element = distanceResponse.data.rows[0].elements[0];
         if (element.status === "OK") {
-          minDistance = element.distance.value / 1000;
-          delivery_fee += minDistance * 0.5;
+          minDistance = element.distance.value / 1000; // km
+          delivery_fee += minDistance * 0.2;
         } else {
-          minDistance = calculateDistanceKm(savedAddress.latitude, savedAddress.longitude, deliveryCompanies[0].latitude, deliveryCompanies[0].longitude);
-          delivery_fee += minDistance * 0.5;
+          minDistance = calculateDistanceKm(
+            savedAddress.latitude,
+            savedAddress.longitude,
+            deliveryCompanies[0].latitude,
+            deliveryCompanies[0].longitude
+          );
+          delivery_fee += minDistance * 0.2;
         }
-      } catch {
-        minDistance = calculateDistanceKm(savedAddress.latitude, savedAddress.longitude, deliveryCompanies[0].latitude, deliveryCompanies[0].longitude);
-        delivery_fee += minDistance * 0.5;
+      } catch (error) {
+        console.log(
+          "Google Distance API failed, using straight distance:",
+          error.message
+        );
+        minDistance = calculateDistanceKm(
+          savedAddress.latitude,
+          savedAddress.longitude,
+          deliveryCompanies[0].latitude,
+          deliveryCompanies[0].longitude
+        );
+        delivery_fee += minDistance * 0.2;
       }
     }
     delivery_fee = parseFloat(delivery_fee.toFixed(2));
 
-    // 5️⃣ حساب المجموع وخصومات الكوبون ونقاط الولاء
-    let total_amount = cartItemsResult.rows.reduce((sum,i)=>sum+i.price*i.quantity,0);
-    let final_amount = total_amount;
+    // 5️⃣ حساب المجموع الكلي
+    let total_amount = 0;
+    for (let item of cartItemsResult.rows) {
+      total_amount += Number(item.price) * Number(item.quantity);
+    }
 
-    // كوبون
-    if (coupon_code) {
-      const { valid, discount_amount: disc } = await validateCoupon(coupon_code, userId, cartItemsResult.rows);
-      if (!valid) throw new Error("Invalid coupon");
-      discount_amount_coupon = disc;
-      final_amount -= discount_amount_coupon;
+    let total_with_shipping = total_amount + delivery_fee;
+    let discount_amount = 0;
+    let final_amount = total_amount;
+    let applied_coupons = [];
+
+    if (Array.isArray(coupons) && coupons.length > 0) {
+      for (const c of coupons) {
+        const vendor_id = Number(c.vendor_id);
+        const coupon_code = c.coupon_code;
+        if (!coupon_code) continue;
+
+        const vendorItems = cartItemsResult.rows.filter(
+          (i) => Number(i.vendor_id) === vendor_id
+        );
+
+        if (vendorItems.length === 0) {
+          console.log(
+            `No items from vendor ${vendor_id} for coupon ${coupon_code}`
+          );
+          continue;
+        }
+
+        const {
+          valid,
+          discount_amount: disc,
+          message,
+        } = await validateCoupon(coupon_code, userId, vendorItems);
+
+        if (valid) {
+          const discNum = Number(disc || 0);
+          discount_amount += discNum;
+          final_amount -= discNum;
+          applied_coupons.push({
+            vendor_id,
+            coupon_code,
+            discount_amount: discNum,
+          });
+          console.log(
+            `Applied coupon ${coupon_code} for vendor ${vendor_id} -> discount ${discNum}`
+          );
+        } else {
+          console.log(
+            `Coupon ${coupon_code} invalid for vendor ${vendor_id}:`,
+            message
+          );
+        }
+      }
+    } else {
+      console.log("No coupons provided");    
     }
 
     // خصم نقاط الولاء
-    console.log("💰 Processing loyalty points:", use_loyalty_points);
+    console.log(" Processing loyalty points:", use_loyalty_points);
     if (use_loyalty_points && use_loyalty_points > 0) {
       const loyaltyData = await exports.getPointsByUser(userId);
       console.log("📊 Loyalty data from DB:", loyaltyData);
@@ -284,11 +523,12 @@ exports.placeOrderFromCart = async function ({
         total_amount,
         discount_amount_total,
         final_amount,
-        coupon_code || null,
+        coupon_code_to_save || coupon_code || null,
         delivery_fee,
         total_with_shipping,
         payment_status,
-        minDistance || null
+        minDistance || null,
+
       ]
     );
 
@@ -302,7 +542,6 @@ exports.placeOrderFromCart = async function ({
         [order.id, item.product_id, item.vendor_id, item.quantity, item.price, JSON.stringify(item.variant || {}), minDistance || 0]
       );
     }
-
     // طلبات التوصيل
     for (let company of deliveryCompanies) {
       await client.query(
@@ -318,21 +557,24 @@ exports.placeOrderFromCart = async function ({
         `INSERT INTO payments (order_id, user_id, payment_method, status, transaction_id, card_last4, card_brand, expiry_month, expiry_year, amount, created_at)
          VALUES ($1,$2,$3,'paid',$4,$5,$6,$7,$8,$9,CURRENT_TIMESTAMP)`,
         [
-          order.id, userId, paymentMethod,
+          order.id,
+          userId,
+          paymentMethod,
           paymentData.transactionId || null,
           paymentData.card_last4 || null,
           paymentData.card_brand || null,
           paymentData.expiry_month || null,
           paymentData.expiry_year || null,
-          final_amount
+          final_amount,
         ]
       );
     }
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
+
     throw err;
   } finally {
     client.release();
@@ -380,18 +622,16 @@ exports.placeOrderFromCart = async function ({
     }
   } catch (postErr) {
     console.warn("⚠️ Post-commit points failed:", postErr.message);
-    // لا نرمي خطأ هنا لأن الطلب تم بنجاح
   }
-
   return order;
 };
 
 
 exports.acceptOrderByDeliveryCompany = async function (orderId, deliveryCompanyId) {
   const client = await pool.connect();
-  
+
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const updateResult = await client.query(
       `UPDATE delivery_requests 
@@ -419,11 +659,10 @@ exports.acceptOrderByDeliveryCompany = async function (orderId, deliveryCompanyI
       [deliveryCompanyId, orderId]
     );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return { success: true };
-
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     console.error("acceptOrderByDeliveryCompany error:", err);
     throw err;
   } finally {
@@ -431,13 +670,19 @@ exports.acceptOrderByDeliveryCompany = async function (orderId, deliveryCompanyI
   }
 };
 
-
-
 exports.updateOrderStatus = async function (orderId, status) {
-  const validStatuses = ['requested', 'accepted', 'processing', 'out_for_delivery', 'delivered'];
-  
+  const validStatuses = [
+    "requested",
+    "accepted",
+    "processing",
+    "out_for_delivery",
+    "delivered",
+  ];
+
   if (!validStatuses.includes(status)) {
-    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    throw new Error(
+      `Invalid status. Must be one of: ${validStatuses.join(", ")}`
+    );
   }
 
   const result = await pool.query(
@@ -452,14 +697,15 @@ exports.updateOrderStatus = async function (orderId, status) {
   return result.rows[0];
 };
 
-
-
 exports.getRequestedOrdersForDelivery = async function (deliveryCompanyId) {
-  console.log('🔍 Executing getRequestedOrdersForDelivery with company ID:', deliveryCompanyId);
-  
+  console.log(
+    "🔍 Executing getRequestedOrdersForDelivery with company ID:",
+    deliveryCompanyId
+  );
+
   try {
     const result = await pool.query(
-  `SELECT 
+      `SELECT 
       o.id,
       o.status AS order_status,
       o.total_amount,
@@ -484,21 +730,20 @@ exports.getRequestedOrdersForDelivery = async function (deliveryCompanyId) {
       AND o.status = 'requested'
     GROUP BY o.id, a.id, u.id, dr.status
     ORDER BY o.created_at DESC`,
-  [deliveryCompanyId]
-);
+      [deliveryCompanyId]
+    );
 
+    console.log(
+      "📊 Orders with all items accepted by vendors:",
+      result.rows.length
+    );
 
-
-
-    console.log('📊 Orders with all items accepted by vendors:', result.rows.length);
-    
     return result.rows;
   } catch (error) {
-    console.error('❌ Error in getRequestedOrdersForDelivery:', error);
+    console.error("❌ Error in getRequestedOrdersForDelivery:", error);
     throw error;
   }
 };
-
 
 /**
  * Get order details for a specific customer
@@ -916,7 +1161,15 @@ exports.getCartById = async (id) => {
       ci.variant, 
       p.price, 
       p.name,
+      p.vendor_id,
       v.store_name AS vendor_name,
+      COALESCE(
+    (
+      SELECT json_agg(json_build_object('code', c.code, 'discount_value', c.discount_value))
+      FROM coupons c
+      WHERE c.vendor_id = v.id AND c.is_active = true
+    ), '[]'
+  ) AS coupons,
       COALESCE(
         (
           SELECT json_agg(pi.image_url::text ORDER BY pi.id)
