@@ -210,7 +210,7 @@ w-[50vw] sm:w-56
                   className="flex items-center gap-3 w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-[var(--hover)]"
                   style={{ color: "var(--text)" }}
                 >
-                  <FiUser />
+                  <FiUser  />
                   <span>View Profile</span>
                 </button>
 
@@ -247,7 +247,6 @@ w-[50vw] sm:w-56
           </div>
 
           {/* Chats */}
-          {/* Chats */}
           <div className="relative flex items-center justify-center">
             <button
               onClick={() => navigate("/delivery/dashboard/chat")}
@@ -257,7 +256,7 @@ w-[50vw] sm:w-56
               title="Chat"
             >
               <div className="relative inline-block">
-                <FaComments size={32} />
+                <FaComments size={28} />
                 {unreadChatCount > 0 && (
                   <span
                     className="
@@ -276,7 +275,6 @@ w-[50vw] sm:w-56
             </button>
           </div>
 
-          {/* Notifications */}
           {/* Notifications */}
           <div className="relative">
             <button
@@ -305,7 +303,7 @@ w-[50vw] sm:w-56
               title="Notifications"
             >
               <div className="relative inline-block">
-                <FaBell size={32} />
+                <FaBell size={28} />
                 {unreadCount > 0 && (
                   <span
                     className="

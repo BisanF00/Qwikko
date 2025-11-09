@@ -80,7 +80,7 @@ return (
         {/* زر الشاتبوت */}
         <button
           onClick={toggleChat}
-          className="fixed right-4 md:right-6 p-4 rounded-full shadow-lg transition flex items-center justify-center z-[9999] md:bottom-6"
+          className="fixed right-4 md:right-6 p-4 rounded-full shadow-lg transition flex items-center justify-center z-[9998] md:bottom-6"
           style={{
             bottom: "calc(env(safe-area-inset-bottom, 0px) + 90px)", // موبايل أعلى شوي
             backgroundColor: "var(--button)",
@@ -103,12 +103,11 @@ return (
       h-[75vh] sm:h-[80vh] md:h-[85vh]
       rounded-t-2xl md:rounded-2xl
       shadow-2xl flex flex-col overflow-hidden
-      z-[9998]
+      z-[9999]
     "
             style={{
               backgroundColor: "var(--div)",
               color: "var(--text)",
-              // نرفعه شوي فوق حافة الأجهزة:
               marginBottom: "env(safe-area-inset-bottom, 0px)",
             }}
           >
@@ -124,7 +123,7 @@ return (
             <h2
               className="text-sm sm:text-base font-semibold flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3"
               style={{
-                backgroundColor: isDark ? "var(--mid-dark)" : "var(--textbox)",
+                backgroundColor: isDarkMode ? "var(--mid-dark)" : "var(--textbox)",
               }}
             >
               <FaRobot size={22} />

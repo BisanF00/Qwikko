@@ -33,6 +33,36 @@ const DeliveryRequestedOrders = () => {
         "--warning": "#f59e0b",
       };
 
+  // Custom Toast Function
+  const showToast = (message, type = "info") => {
+    // إنشاء عنصر toast ديناميكي
+    const toast = document.createElement("div");
+    toast.className = `fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white font-semibold transform transition-all duration-300 ${
+      type === "success"
+        ? "bg-green-500"
+        : type === "error"
+        ? "bg-red-500"
+        : type === "warning"
+        ? "bg-yellow-500"
+        : "bg-blue-500"
+    }`;
+    toast.textContent = message;
+    toast.style.zIndex = "9999";
+
+    document.body.appendChild(toast);
+
+    // إخفاء الـ toast بعد 4 ثواني
+    setTimeout(() => {
+      toast.style.transform = "translateX(100%)";
+      toast.style.opacity = "0";
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 300);
+    }, 4000);
+  };
+
   useEffect(() => {
     loadOrders();
   }, []);
@@ -41,8 +71,10 @@ const DeliveryRequestedOrders = () => {
     try {
       const data = await getRequestedOrders();
       setOrders(data);
+      showToast(`✅ Loaded ${data.length} orders successfully!`, "success");
     } catch (error) {
       console.error("❌ Error loading orders:", error);
+      showToast("❌ Failed to load orders. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -52,10 +84,10 @@ const DeliveryRequestedOrders = () => {
     try {
       await acceptOrder(orderId);
       setOrders((prev) => prev.filter((order) => order.id !== orderId));
-      alert("Order accepted successfully!");
+      showToast("🎉 Order accepted successfully!", "success");
     } catch (error) {
       console.error("❌ Error accepting order:", error);
-      alert("Error accepting order: " + error.message);
+      showToast(`❌ Failed to accept order: ${error.message}`, "error");
     }
   };
 
@@ -75,16 +107,20 @@ const DeliveryRequestedOrders = () => {
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6" style={themeOverrides}>
+    <div
+      className="mx-auto max-w-6xl px-4 py-6"
+      style={{ paddingTop: "900px", backgroundColor: "var(--bg)" }}
+    >
       {/* ===== Header ===== */}
       <div
         className="
-          mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between
-          bg-[var(--bg)]/60 rounded-2xl border border-[var(--border)] p-4
+          mb-20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between
+          bg-[var(--bg)] rounded-2xl border border-[var(--border)] p-4
           shadow-sm
         "
+        style={{ marginTop: "20px" }}
       >
-        <div className="mt-2 sm:mt-0">
+        <div className="mt-20 pt-4 sm:mt-0">
           <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--text)] tracking-tight">
             Requested Orders
           </h1>
@@ -98,7 +134,7 @@ const DeliveryRequestedOrders = () => {
             className="
               inline-flex items-center justify-center gap-2 rounded-full
               border border-[var(--border)]
-              bg-[var(--textbox)] px-3 py-1 text-xs sm:text-sm font-semibold
+              px-3 py-1 text-xs sm:text-sm font-semibold
               text-[var(--text)]
             "
           >
@@ -170,7 +206,6 @@ const DeliveryRequestedOrders = () => {
                 transition-transform
               "
             >
-              {/* هيدر الكارد: يبقى نفسه على الديسكتوب / بدون زر على الموبايل */}
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base sm:text-lg font-bold text-[var(--text)]">
@@ -180,7 +215,7 @@ const DeliveryRequestedOrders = () => {
                     className="
                       inline-flex items-center gap-2 rounded-full px-2.5 py-1
                       text-[10px] sm:text-xs font-semibold border border-[var(--border)]
-                      bg-[var(--textbox)] text-[var(--text)]
+                      text-[var(--text)]
                     "
                   >
                     <span
@@ -191,7 +226,6 @@ const DeliveryRequestedOrders = () => {
                   </span>
                 </div>
 
-                {/* زر الديسكتوب فقط (يبقى مكانه في الهيدر) */}
                 <button
                   onClick={() => handleAcceptOrder(order.id)}
                   className="
@@ -199,13 +233,12 @@ const DeliveryRequestedOrders = () => {
                     rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm
                     hover:brightness-110 active:scale-95
                   "
-                  style={{ backgroundColor: "var(--success)" }}
+                  style={{ backgroundColor: "var(--button)" }}
                 >
                   Accept Order
                 </button>
               </div>
 
-              {/* تفاصيل الطلب */}
               <div className="grid gap-1 text-[var(--text)] text-sm sm:text-base">
                 <p className="text-[var(--light-gray)]">
                   Customer:
@@ -236,7 +269,7 @@ const DeliveryRequestedOrders = () => {
                   <span
                     className="
                       rounded-lg border border-[var(--border)]
-                      bg-[var(--textbox)] px-2.5 py-1
+                      px-2.5 py-1
                       text-xs sm:text-sm text-[var(--text)] font-semibold
                     "
                     title="Delivery Fee"
@@ -246,7 +279,7 @@ const DeliveryRequestedOrders = () => {
                   <span
                     className="
                       rounded-lg border border-[var(--border)]
-                      bg-[var(--textbox)] px-2.5 py-1
+                      px-2.5 py-1
                       text-xs sm:text-sm text-[var(--text)] font-semibold
                     "
                     title="Final Amount"
@@ -264,7 +297,7 @@ const DeliveryRequestedOrders = () => {
                   w-full rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm
                   hover:brightness-110 active:scale-95
                 "
-                style={{ backgroundColor: "var(--success)" }}
+                style={{ backgroundColor: "var(--button)" }}
               >
                 Accept Order
               </button>

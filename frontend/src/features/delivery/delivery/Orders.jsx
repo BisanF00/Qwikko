@@ -532,17 +532,16 @@ export default function OrdersList() {
                     <h3 className="text-base sm:text-lg md:text-xl font-bold flex-1 break-words">
                       Order #{o.id}
                     </h3>
-
                     <button
                       onClick={() => openPayModal(o.id, isPaid)}
                       disabled={isPaid}
                       aria-disabled={isPaid}
                       className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2 rounded-lg border text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm flex-shrink-0
-                        ${
-                          isPaid
-                            ? "bg-[var(--button)]/80 text-white border-[var(--button)]/80 cursor-not-allowed"
-                            : "bg-transparent text-[var(--button)] border-[var(--button)] hover:bg-[var(--button)] hover:text-white hover:shadow-md active:scale-[0.97]"
-                        }`}
+    ${
+      isPaid
+        ? "bg-[var(--button)]/60 text-white border-[var(--button)]/80 cursor-not-allowed"
+        : "bg-transparent text-[var(--button)] border-[var(--button)] hover:bg-[var(--button)] hover:text-white hover:shadow-md active:scale-[0.97]"
+    }`}
                     >
                       {isPaid ? (
                         <>
@@ -560,7 +559,7 @@ export default function OrdersList() {
                               d="M5 13l4 4L19 7"
                             />
                           </svg>
-                          <span className="hidden xs:inline">Paid</span>
+                          <span className="inline-block">Paid</span>
                         </>
                       ) : (
                         <>
@@ -572,13 +571,26 @@ export default function OrdersList() {
                             stroke="currentColor"
                             strokeWidth={2}
                           >
+                            {/* الدائرة */}
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              d="M12 8c-1.657 0-3 1.343-3 3 0 1.657 1.343 3 3 3m0 0v1m0-4V9m9 3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              d="M12 3a9 9 0 100 18 9 9 0 000-18z"
+                            />
+                            {/* علامة الدولار */}
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 8.5c-.9 0-1.5.5-1.5 1.2 0 .7.5 1.1 1.4 1.3l.3.1c1 .2 1.8.7 1.8 1.7 0 1.1-.9 1.8-2.1 1.8-1 0-1.7-.4-2-.9"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 7v1.2m0 7v-1.2"
                             />
                           </svg>
-                          <span className="hidden xs:inline">Mark Paid</span>
+
+                          <span className="inline-block">Mark Paid</span>
                         </>
                       )}
                     </button>

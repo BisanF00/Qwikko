@@ -59,7 +59,7 @@ export default function LandingPage() {
   const toggleChat = () => setIsChatOpen((v) => !v);
 
   const colors = {
-    bg: isDark ? "#0a0a0a" : "#ffffff",
+    bg: isDark ? "#323232" : "#ffffff", // ✅ خلفية الصفحة بالكامل
     textbox: "#ffffff",
     text: isDark ? "#f5f5f5" : "#1a1f1d",
     textSecondary: isDark ? "#a0a0a0" : "#5a6c65",
@@ -114,13 +114,6 @@ export default function LandingPage() {
         setTitle(parsedTitle || "Welcome to Qwikko Delivery");
         setSubtitle(parsedSub);
       }
-      console.log("CMS parsed:", {
-        titleAfter: (data?.title || "").trim(),
-        contentRaw: raw,
-        subtitleAfter: raw.includes("@")
-          ? raw.split("@").slice(1).join("@").trim()
-          : (raw || data?.subtitle || "").trim(),
-      });
     }
     loadCMS();
   }, []);
@@ -136,12 +129,11 @@ export default function LandingPage() {
     dispatch(setTheme(savedTheme === "dark"));
   }, [dispatch]);
 
-  // ---------- BODY SCROLL LOCK (handle iOS/Android correctly) ----------
-  // We save the scrollY and set body to position:fixed to prevent background scroll.
+  // ---------- BODY SCROLL LOCK ----------
   useEffect(() => {
     let scrollY = 0;
+
     if (isChatOpen) {
-      // open: lock body
       scrollY = window.scrollY || document.documentElement.scrollTop;
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
@@ -149,10 +141,8 @@ export default function LandingPage() {
       document.body.style.right = "0";
       document.body.style.width = "100%";
       document.body.style.overflow = "hidden";
-      // store on element for restore
       document.body.setAttribute("data-locked-scroll", String(scrollY));
     } else {
-      // close: restore
       const stored = document.body.getAttribute("data-locked-scroll");
       const prev = stored ? parseInt(stored, 10) : 0;
       document.body.style.position = "";
@@ -162,10 +152,11 @@ export default function LandingPage() {
       document.body.style.width = "";
       document.body.style.overflow = "";
       document.body.removeAttribute("data-locked-scroll");
-      // restore scroll position
-      window.scrollTo({ top: prev, left: 0, behavior: "auto" });
+      setTimeout(() => {
+        window.scrollTo({ top: prev, left: 0, behavior: "auto" });
+      }, 10);
     }
-    // cleanup on unmount (just in case)
+
     return () => {
       const stored = document.body.getAttribute("data-locked-scroll");
       const prev = stored ? parseInt(stored, 10) : 0;
@@ -176,12 +167,36 @@ export default function LandingPage() {
       document.body.style.width = "";
       document.body.style.overflow = "";
       document.body.removeAttribute("data-locked-scroll");
-      window.scrollTo({ top: prev, left: 0, behavior: "auto" });
+      setTimeout(() => {
+        window.scrollTo({ top: prev, left: 0, behavior: "auto" });
+      }, 10);
     };
   }, [isChatOpen]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >=
+        document.body.offsetHeight - 100
+      ) {
+        document.documentElement.style.overflowY = "auto";
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <>
+    // ✅ خلفية الصفحة كلها حسب الثيم (لايت/دارك)
+    <div
+      style={{
+        backgroundColor: colors.bg,
+        color: colors.text,
+        minHeight: "100vh",
+        width: "100%",
+      }}
+    >
+      {/* الهيدر بجرادينت كامل-عرض */}
       <motion.section
         variants={gradientVariants}
         animate="animate"
@@ -221,7 +236,7 @@ export default function LandingPage() {
           <motion.div variants={itemUp}></motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 items-center">
-            <div className="order-2 md:order-1 text-center md:text-left  relative z-30">
+            <div className="order-2 md:order-1 text-center md:text-left relative z-30">
               <motion.h1
                 variants={textReveal}
                 className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight tracking-tight"
@@ -241,7 +256,9 @@ export default function LandingPage() {
                   textShadow: "0 2px 6px rgba(0,0,0,0.45)",
                 }}
               >
-                {subtitle && subtitle.trim().length > 0 ? subtitle : "Laoding."}
+                {subtitle && subtitle.trim().length > 0
+                  ? subtitle
+                  : "Loading..."}
               </motion.h6>
 
               <motion.div
@@ -304,197 +321,200 @@ export default function LandingPage() {
         </motion.div>
       </motion.section>
 
-      <section
-        className="w-full max-w-6xl px-4 sm:px-6 md:p-10 mt-6 md:mt-10 text-center mx-auto"
-        style={{ backgroundColor: colors.bg, color: colors.text }}
-      >
-        <motion.h2
-          variants={itemUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          className="text-2xl sm:text-3xl md:text-4xl font-bold mb-8 sm:mb-12 md:mb-16"
-          style={{ color: isDark ? "#ffffff" : colors.button }}
-        >
-          How It Works
-        </motion.h2>
+      {/* ✅ مساحة المحتوى السفلي بخلفية الصفحة نفسها (لا ألوان خلف الكاردات) */}
+      <div className="w-full">
+        {/* How It Works */}
+        <section className="w-full max-w-6xl px-4 sm:px-6 md:p-10 mt-6 md:mt-10 text-center mx-auto">
+          <motion.h2
+            variants={itemUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-8 sm:mb-12 md:mb-16"
+            style={{ color: isDark ? "#ffffff" : colors.button }}
+          >
+            How It Works
+          </motion.h2>
 
-        <div
-          className="hidden md:block absolute left-0 right-0 h-[3px]"
-          style={{
-            top: "28px",
-            backgroundColor: isDark ? "#ffffff" : colors.button,
-            opacity: 0.25,
-          }}
-        />
+          <div
+            className="hidden md:block absolute left-0 right-0 h-[3px]"
+            style={{
+              top: "28px",
+              backgroundColor: isDark ? "#ffffff" : colors.button,
+              opacity: 0.25,
+            }}
+          />
 
-        <div className="hidden md:grid grid-cols-3 gap-6 sm:gap-10 md:gap-16 mb-4 sm:mb-6">
-          {["1", "2", "3"].map((step, idx) => (
-            <motion.div
-              key={idx}
-              className="flex justify-center"
-              variants={itemUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-            >
+          <div className="hidden md:grid grid-cols-3 gap-6 sm:gap-10 md:gap-16 mb-4 sm:mb-6">
+            {["1", "2", "3"].map((step, idx) => (
               <motion.div
-                className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 flex items-center justify-center rounded-full text-sm sm:text-base md:text-lg font-bold z-10 shadow-md"
-                style={{ backgroundColor: colors.button, color: "#fff" }}
-                animate={{ scale: [1, 1.06, 1] }}
-                transition={{
-                  duration: 1.8,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: idx * 0.2,
-                }}
+                key={idx}
+                className="flex justify-center"
+                variants={itemUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
               >
-                {step}
-              </motion.div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-10 md:gap-16 justify-items-center">
-          {[
-            {
-              title: "Register your company",
-              desc: "Sign up quickly and create your business account.",
-            },
-            {
-              title: "Set up your delivery zones",
-              desc: "Define the areas where your company will operate and deliver.",
-            },
-            {
-              title: "Start receiving orders",
-              desc: "Track and deliver orders smoothly and grow your business.",
-            },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              variants={itemUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              whileHover={{ y: -6, rotate: 0.25 }}
-              transition={{ type: "spring", stiffness: 140, damping: 12 }}
-              className="flex flex-col items-center text-center w-full relative"
-              style={{ maxWidth: "22rem" }}
-            >
-              <div className="md:hidden flex justify-center -mb-3">
                 <motion.div
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-base font-bold shadow-md"
+                  className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 flex items-center justify-center rounded-full text-sm sm:text-base md:text-lg font-bold z-10 shadow-md"
                   style={{ backgroundColor: colors.button, color: "#fff" }}
                   animate={{ scale: [1, 1.06, 1] }}
                   transition={{
                     duration: 1.8,
                     repeat: Infinity,
                     ease: "easeInOut",
-                    delay: i * 0.2,
+                    delay: idx * 0.2,
                   }}
                 >
-                  {i + 1}
+                  {step}
                 </motion.div>
-              </div>
-
-              <div
-                className="w-full"
-                style={{
-                  backgroundColor: isDark ? "#1a1a1a" : "#f8faf9",
-                  color: isDark ? "#ffffff" : colors.button,
-                  borderRadius: "1rem",
-                  border: `1px solid ${isDark ? colors.border : colors.button}`,
-                  boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-                  padding: "1.5rem",
-                }}
-              >
-                <p className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
-                  {item.title}
-                </p>
-                <p
-                  className="text-sm leading-relaxed opacity-90"
-                  style={{ color: isDark ? "#eaeaea" : colors.button }}
-                >
-                  {item.desc}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className="w-full max-w-6xl px-4 sm:px-6 md:p-10 mt-6 mb-20 md:mb-24 text-center mx-auto"
-        style={{ backgroundColor: colors.bg, color: colors.text }}
-      >
-        <motion.h2
-          variants={itemUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          className="text-2xl sm:text-3xl md:text-4xl font-bold mb-10 sm:mb-12 md:mb-16"
-          style={{ color: isDark ? "#ffffff" : colors.button }}
-        >
-          Benefits
-        </motion.h2>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-x-6 sm:gap-y-12 md:gap-y-14 justify-items-center">
-          {[
-            { Icon: FaClipboardList, text: "Manage orders easily" },
-            { Icon: FaChartLine, text: "Accurate reports and statistics" },
-            { Icon: FaUsers, text: "Reach thousands of customers & stores" },
-            { Icon: FaDollarSign, text: "Guaranteed and fast payments" },
-          ].map(({ Icon, text }, i) => (
-            <motion.div
-              key={i}
-              variants={itemUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              whileHover={{ y: -8, rotate: -0.25 }}
-              transition={{ type: "spring", stiffness: 140, damping: 12 }}
-              className="flex flex-col items-center justify-center w-full"
-              style={{
-                maxWidth: "18rem",
-                backgroundColor: isDark ? "#1a1a1a" : "#f8faf9",
-                color: colors.text,
-                borderRadius: "1rem",
-                border: `1px solid ${isDark ? colors.border : colors.button}`,
-                boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-                padding: "1.5rem",
-                minHeight: "13rem",
-              }}
-            >
-              <motion.div
-                className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-4 sm:mb-5 shadow-md"
-                style={{ backgroundColor: colors.button, color: "#fff" }}
-                animate={{ scale: [1, 1.08, 1] }}
-                transition={{
-                  duration: 1.9,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: i * 0.15,
-                }}
-              >
-                <Icon className="text-xl sm:text-2xl md:text-3xl" />
               </motion.div>
-              <p className="text-sm sm:text-base font-semibold leading-relaxed opacity-95">
-                {text}
-              </p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-10 md:gap-16 justify-items-center">
+            {[
+              {
+                title: "Register your company",
+                desc: "Sign up quickly and create your business account.",
+              },
+              {
+                title: "Set up your delivery zones",
+                desc: "Define the areas where your company will operate and deliver.",
+              },
+              {
+                title: "Start receiving orders",
+                desc: "Track and deliver orders smoothly and grow your business.",
+              },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                variants={itemUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                whileHover={{ y: -6, rotate: 0.25 }}
+                transition={{ type: "spring", stiffness: 140, damping: 12 }}
+                className="flex flex-col items-center text-center w-full relative"
+                style={{ maxWidth: "22rem" }}
+              >
+                <div className="md:hidden flex justify-center -mb-3">
+                  <motion.div
+                    className="w-10 h-10 flex items-center justify-center rounded-full text-base font-bold shadow-md"
+                    style={{ backgroundColor: colors.button, color: "#fff" }}
+                    animate={{ scale: [1, 1.06, 1] }}
+                    transition={{
+                      duration: 1.8,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: i * 0.2,
+                    }}
+                  >
+                    {i + 1}
+                  </motion.div>
+                </div>
+
+                <div
+                  className="w-full"
+                  style={{
+                    backgroundColor: isDark ? "#424242" : "#f8faf9", // خلفية الكارد فقط
+                    color: isDark ? "#ffffff" : colors.button,
+                    borderRadius: "1rem",
+                    border: `1px solid ${isDark ? "#555555" : colors.button}`,
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                    padding: "1.5rem",
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  <p className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
+                    {item.title}
+                  </p>
+                  <p
+                    className="text-sm leading-relaxed opacity-90"
+                    style={{ color: isDark ? "#eaeaea" : colors.button }}
+                  >
+                    {item.desc}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* Benefits */}
+        <section className="w-full max-w-6xl px-4 sm:px-6 md:p-10 mt-6 mb-20 md:mb-24 text-center mx-auto">
+          <motion.h2
+            variants={itemUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-10 sm:mb-12 md:mb-16"
+            style={{ color: isDark ? "#ffffff" : colors.button }}
+          >
+            Benefits
+          </motion.h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-x-6 sm:gap-y-12 md:gap-y-14 justify-items-center">
+            {[
+              { Icon: FaClipboardList, text: "Manage orders easily" },
+              { Icon: FaChartLine, text: "Accurate reports and statistics" },
+              { Icon: FaUsers, text: "Reach thousands of customers & stores" },
+              { Icon: FaDollarSign, text: "Guaranteed and fast payments" },
+            ].map(({ Icon, text }, i) => (
+              <motion.div
+                key={i}
+                variants={itemUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                whileHover={{ y: -8, rotate: -0.25 }}
+                transition={{ type: "spring", stiffness: 140, damping: 12 }}
+                className="flex flex-col items-center justify-center w-full"
+                style={{
+                  maxWidth: "18rem",
+                  backgroundColor: isDark ? "#424242" : "#f8faf9", // خلفية الكارد فقط
+                  color: colors.text,
+                  borderRadius: "1rem",
+                  border: `1px solid ${isDark ? "#555555" : colors.button}`,
+                  boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                  padding: "1.5rem",
+                  minHeight: "13rem",
+                  transition: "all 0.3s ease",
+                }}
+              >
+                <motion.div
+                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-4 sm:mb-5 shadow-md"
+                  style={{ backgroundColor: colors.button, color: "#fff" }}
+                  animate={{ scale: [1, 1.08, 1] }}
+                  transition={{
+                    duration: 1.9,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.15,
+                  }}
+                >
+                  <Icon className="text-xl sm:text-2xl md:text-3xl" />
+                </motion.div>
+                <p className="text-sm sm:text-base font-semibold leading-relaxed opacity-95">
+                  {text}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      </div>
 
       {/* FAB */}
       <button
         onClick={toggleChat}
-        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 p-3 md:p-4 rounded-full shadow-lg flex items-center justify-center z-50 transition hover:scale-105"
+        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 p-3 md:p-4 rounded-full shadow-lg flex items-center justify-center z-50 transition-all duration-300 hover:scale-105 active:scale-95"
         style={{
           backgroundColor: colors.button,
           color: "#fff",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
           border: "none",
+          width: "56px",
+          height: "56px",
         }}
         title="Open Qwikko Chatbot"
         aria-label="Open Qwikko Chatbot"
@@ -505,44 +525,38 @@ export default function LandingPage() {
       {/* Chat panel */}
       {isChatOpen && (
         <div
-          className="fixed inset-x-0 bottom-0 top-auto md:inset-auto md:top-4 md:right-4 w-full md:w-96 h-[70vh] sm:h-[75vh] md:h-[85vh] rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50"
-          style={{ backgroundColor: colors.div, color: colors.text }}
+          className="fixed inset-0 md:inset-auto md:top-4 md:right-4 md:bottom-4 w-full md:w-96 h-full md:h-[calc(100vh-2rem)] rounded-none md:rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50"
+          style={{
+            backgroundColor: colors.div,
+            color: colors.text,
+            maxHeight: "100vh",
+          }}
         >
-          <button
-            onClick={toggleChat}
-            className="absolute top-3 right-3 md:top-4 md:right-4 z-10"
-            style={{ color: colors.textSecondary }}
-            title="Close"
-            aria-label="Close chatbot"
-          >
-            <X size={22} className="md:hidden" />
-            <X size={24} className="hidden md:block" />
-          </button>
-
-          <h2
-            className="text-sm sm:text-base font-semibold flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3"
+          <div
+            className="flex items-center justify-between px-4 py-3 sm:py-4"
             style={{
               backgroundColor: colors.bg,
               color: colors.text,
-              boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+              boxShadow: "0 1px 8px rgba(0,0,0,0.1)",
             }}
           >
-            <FaRobot
-              size={18}
-              className="sm:hidden"
-              style={{ color: colors.text }}
-            />
-            <FaRobot
-              size={22}
-              className="hidden sm:block"
-              style={{ color: colors.text }}
-            />
-            Qwikko Chatbot
-          </h2>
+            <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-3">
+              <FaRobot style={{ color: colors.button }} />
+              Qwikko Chatbot
+            </h2>
+            <button
+              onClick={toggleChat}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              style={{ color: colors.textSecondary }}
+              title="Close"
+              aria-label="Close chatbot"
+            >
+              <X size={24} />
+            </button>
+          </div>
 
-          {/* IMPORTANT: overscrollBehavior + webkit momentum scroll to avoid scroll chaining/elastic issues on mobile */}
           <div
-            className="flex-grow overflow-auto p-2 sm:p-3 md:p-2"
+            className="flex-grow overflow-auto p-3 sm:p-4"
             style={{
               backgroundColor: colors.bg,
               overscrollBehavior: "contain",
@@ -553,6 +567,8 @@ export default function LandingPage() {
           </div>
         </div>
       )}
-    </>
+
+      <div style={{ height: "50px" }}></div>
+    </div>
   );
 }

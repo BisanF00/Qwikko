@@ -71,7 +71,7 @@ export default function DeliveryDashboard() {
   const paymentStatus = report.payment_status || {};
 
   const dd = {
-    bg: isDarkMode ? "#111315" : "#ffffff",
+    bg: isDarkMode ? "#475058ff" : "#ffffff",
     text: isDarkMode ? "#f9fafb" : "#1f2937",
     border: isDarkMode ? "#2a2e33" : "#e5e7eb",
   };
@@ -92,7 +92,6 @@ export default function DeliveryDashboard() {
         style={{
           backgroundColor: "var(--bg)",
           color: "var(--text)",
-          border: "1px solid var(--border)",
           borderTop: "none",
         }}
       >
@@ -128,9 +127,6 @@ export default function DeliveryDashboard() {
             >
               {/* Controls */}
               <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
-                {/* <p className="text-sm sm:text-base opacity-80">
-                  Range: <span className="font-semibold">{days} days</span>
-                </p> */}
                 <select
                   value={days}
                   onChange={(e) => setDays(Number(e.target.value))}

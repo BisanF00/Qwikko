@@ -89,9 +89,9 @@ export default function EditProfile() {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
+
   // ============================================
 
-  // ===================== تحميل البيانات =====================
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -138,7 +138,6 @@ export default function EditProfile() {
     loadProfile();
   }, [location.state?.company, location.state?.coverageAreas]);
 
-  // ===================== تغييرات الحقول =====================
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -162,7 +161,6 @@ export default function EditProfile() {
     return changed;
   };
 
-  // ===================== حذف مدينة =====================
   const handleDeleteCity = async (city) => {
     try {
       const token = localStorage.getItem("token");
@@ -188,7 +186,6 @@ export default function EditProfile() {
     }
   };
 
-  // ===================== حفظ التغييرات =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -226,11 +223,10 @@ export default function EditProfile() {
       return; // ما ننزل لـ setLoading(false) أبداً
     } catch (err) {
       showToast("error", err.message || "Failed to update profile");
-      setLoading(false); // فقط عند الفشل ننهي اللودينغ
+      setLoading(false); 
     }
   };
 
-  // ===================== واجهة الانتظار =====================
   if (!formData) {
     return (
       <div
@@ -261,12 +257,15 @@ export default function EditProfile() {
 
   return (
     <>
-      {/* ✅ Toast (Top Center) */}
       {toast.show && (
         <div
-          className={`fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg text-white font-semibold text-center z-[9999] transition-all duration-500 ${
-            toast.show ? "opacity-100" : "opacity-0 -translate-y-4"
-          }`}
+          className={`
+      fixed top-20 left-1/2 -translate-x-1/2
+      px-6 py-3 rounded-xl shadow-lg text-white font-semibold
+      z-[9999] transition-all duration-500
+      flex items-center justify-center gap-2   // 👈 هذول أهم شي
+      ${toast.show ? "opacity-100" : "opacity-0 -translate-y-4"}
+    `}
           style={{
             minWidth: "280px",
             boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
@@ -280,16 +279,17 @@ export default function EditProfile() {
           role="status"
           aria-live="polite"
         >
-          {toast.type === "success"
-            ? "✅ "
-            : toast.type === "error"
-            ? "❌ "
-            : "ℹ️ "}
-          {toast.text}
+          <span>
+            {toast.type === "success"
+              ? "✔️"
+              : toast.type === "error"
+              ? "❌"
+              : "ℹ️"}
+          </span>
+          <span>{toast.text}</span>
         </div>
       )}
 
-      {/* العنوان — موبايل أصغر، على sm ترجع قيمك الأصلية */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 mt-6 sm:mt-8">
         <h2
           className="text-2xl sm:text-3xl font-extrabold mb-4 sm:mb-6"
@@ -306,8 +306,8 @@ export default function EditProfile() {
         style={{
           color: "var(--text)",
           backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
-          border: `1px solid var(--border)`,
-          borderRadius: "1.5rem",
+          // border: `1px solid var(--border)`,
+          // borderRadius: "1.5rem",
           boxShadow: "0 6px 15px rgba(0,0,0,0.1)",
         }}
       >
