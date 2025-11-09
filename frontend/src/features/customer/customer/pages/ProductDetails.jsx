@@ -18,6 +18,8 @@ const ProductDetails = () => {
   const [currentImage, setCurrentImage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [hasUserReviewed, setHasUserReviewed] = useState(false);
+  const [averageRating, setAverageRating] = useState(null);
+  const [reviewsCount, setReviewsCount] = useState(0);
 
   const user = useSelector((state) => state.cart.user);
   const themeMode = useSelector((state) => state.customerTheme.mode);
@@ -45,11 +47,16 @@ const ProductDetails = () => {
     const fetchReviews = async () => {
       try {
         const res = await axios.get(`http://localhost:3000/api/products/review/${id}`);
-        setReviews(res.data);
-        
-        // Check if current user has already reviewed this product
+        console.log("✅ Reviews API response:", res.data);
+
+        // نقرأ المصفوفة والبيانات الأخرى بشكل صحيح
+        const reviewsData = Array.isArray(res.data.reviews) ? res.data.reviews : [];
+        setReviews(reviewsData);
+        setAverageRating(res.data.average_rating);
+        setReviewsCount(res.data.reviews_count);
+
         if (user?.id) {
-          const userReview = res.data.find(review => review.user_id === user.id);
+          const userReview = reviewsData.find((review) => review.user_id === user.id);
           setHasUserReviewed(!!userReview);
         }
       } catch (err) {
@@ -67,13 +74,12 @@ const ProductDetails = () => {
 
   const handleAddReview = async (e) => {
     e.preventDefault();
-    
-    // Validation
+
     if (rating === 0) {
       alert("Please select a rating before submitting your review");
       return;
     }
-    
+
     if (!comment.trim()) {
       alert("Please write a comment before submitting your review");
       return;
@@ -105,7 +111,9 @@ const ProductDetails = () => {
 
       // Refresh reviews
       const res = await axios.get(`http://localhost:3000/api/products/review/${id}`);
-      setReviews(res.data);
+      setReviews(res.data.reviews || []);
+      setAverageRating(res.data.average_rating);
+      setReviewsCount(res.data.reviews_count);
     } catch (err) {
       console.error("Error adding review:", err);
       if (err.response?.status === 409) {
@@ -117,25 +125,24 @@ const ProductDetails = () => {
     }
   };
 
-  // Function to render stars
   const renderStars = (rating) => {
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
-    
+
     for (let i = 0; i < fullStars; i++) {
       stars.push(<FaStar key={`full-${i}`} className="text-yellow-400" />);
     }
-    
+
     if (hasHalfStar) {
       stars.push(<FaStarHalfAlt key="half" className="text-yellow-400" />);
     }
-    
+
     const emptyStars = 5 - stars.length;
     for (let i = 0; i < emptyStars; i++) {
       stars.push(<FaRegStar key={`empty-${i}`} className="text-yellow-400" />);
     }
-    
+
     return stars;
   };
 
@@ -167,9 +174,6 @@ const ProductDetails = () => {
   }
 
   const images = Array.isArray(product.images) ? product.images : [];
-  const averageRating = reviews.length > 0 
-    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length 
-    : 0;
 
   return (
     <div className="min-h-screen bg-[var(--bg)] py-8">
@@ -188,8 +192,7 @@ const ProductDetails = () => {
                     onClick={() => setIsOpen(true)}
                   />
                 </div>
-                
-                {/* Thumbnail Images */}
+
                 {images.length > 1 && (
                   <div className="flex gap-2 overflow-x-auto">
                     {images.map((img, index) => (
@@ -198,9 +201,9 @@ const ProductDetails = () => {
                           src={img}
                           alt={`${product.name} ${index + 1}`}
                           className={`w-20 h-20 object-cover rounded-lg cursor-pointer border-2 ${
-                            currentImage === index 
-                              ? 'border-[var(--button)]' 
-                              : 'border-transparent'
+                            currentImage === index
+                              ? "border-[var(--button)]"
+                              : "border-transparent"
                           }`}
                           onClick={() => setCurrentImage(index)}
                         />
@@ -221,9 +224,8 @@ const ProductDetails = () => {
 
           {/* Product Info */}
           <div className="w-full lg:w-1/2">
-            {/* Vendor Info */}
             {product.vendor_name && (
-              <div 
+              <div
                 onClick={handleVendorClick}
                 className="inline-flex items-center gap-3 mb-4 p-3 rounded-xl bg-gradient-to-r from-[var(--button)]/10 to-[var(--button)]/5 border border-[var(--button)]/20 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg group"
               >
@@ -240,15 +242,13 @@ const ProductDetails = () => {
               </div>
             )}
 
-            <h1 className="text-3xl font-bold text-[var(--text)] mb-4">
-              {product.name}
-            </h1>
-            
+            <h1 className="text-3xl font-bold text-[var(--text)] mb-4">{product.name}</h1>
+
             <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center gap-2">
-                {renderStars(averageRating)}
+                {renderStars(averageRating || 0)}
                 <span className="text-[var(--text)] text-sm">
-                  ({reviews.length} reviews)
+                  ({reviewsCount} reviews)
                 </span>
               </div>
             </div>
@@ -257,7 +257,6 @@ const ProductDetails = () => {
               {product.description}
             </p>
 
-            {/* Category */}
             {product.category_name && (
               <div className="mb-4">
                 <span className="text-sm text-[var(--light-gray)]">Category: </span>
@@ -267,7 +266,6 @@ const ProductDetails = () => {
               </div>
             )}
 
-            {/* Price Section مع Add to Cart على اليمين */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <span className="text-2xl font-bold text-[var(--text)]">
@@ -279,7 +277,7 @@ const ProductDetails = () => {
                   </span>
                 )}
               </div>
-              
+
               <button className="flex items-center gap-3 bg-[var(--button)] text-white px-8 py-4 rounded-xl font-semibold hover:bg-opacity-90 transition-all duration-300 hover:scale-105">
                 <FaShoppingCart className="text-lg" />
                 Add to Cart
@@ -288,14 +286,24 @@ const ProductDetails = () => {
           </div>
         </div>
 
-        {/* Reviews Section مع سكرول أقصر */}
-        <div className={`rounded-2xl overflow-hidden ${
-          themeMode === 'dark' ? 'bg-[var(--div)]' : 'bg-[var(--textbox)]'
-        } shadow-sm`}>
+        {/* Reviews Section */}
+        <div
+          className={`rounded-2xl overflow-hidden ${
+            themeMode === "dark" ? "bg-[var(--div)]" : "bg-[var(--textbox)]"
+          } shadow-sm`}
+        >
           <div className="p-6">
             <h2 className="text-xl font-bold text-[var(--text)] mb-4">
-              Customer Reviews ({reviews.length})
+              Customer Reviews ({reviewsCount})
             </h2>
+
+            {averageRating && (
+              <div className="mb-3">
+                <h4 className="font-semibold text-lg">
+                  ⭐ Average Rating: {averageRating}
+                </h4>
+              </div>
+            )}
 
             {reviews.length === 0 ? (
               <p className="text-[var(--light-gray)] text-center py-6">
@@ -304,14 +312,17 @@ const ProductDetails = () => {
             ) : (
               <div className="space-y-4 max-h-34 overflow-y-auto pr-2 custom-scrollbar">
                 {reviews.map((review) => (
-                  <div key={review.id} className="border-b border-[var(--border)] pb-4 last:border-b-0">
+                  <div
+                    key={review.id}
+                    className="border-b border-[var(--border)] pb-4 last:border-b-0"
+                  >
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-8 h-8 bg-[var(--button)] rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                        {review.user_name?.charAt(0)?.toUpperCase() || 'U'}
+                        {review.user_name?.charAt(0)?.toUpperCase() || "U"}
                       </div>
                       <div>
                         <span className="font-semibold text-[var(--text)] text-sm block">
-                          {review.user_name || 'Anonymous'}
+                          {review.user_name || "Anonymous"}
                         </span>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
@@ -332,7 +343,10 @@ const ProductDetails = () => {
             )}
 
             {/* Add Review Form */}
-            <form onSubmit={handleAddReview} className="mt-6 pt-6 border-t border-[var(--border)]">
+            <form
+              onSubmit={handleAddReview}
+              className="mt-6 pt-6 border-t border-[var(--border)]"
+            >
               <h3 className="text-lg font-bold text-[var(--text)] mb-3">
                 Add Your Review
               </h3>
@@ -346,7 +360,9 @@ const ProductDetails = () => {
               )}
 
               <div className="mb-4">
-                <label className="block text-sm text-[var(--text)] mb-2">Your Rating *</label>
+                <label className="block text-sm text-[var(--text)] mb-2">
+                  Your Rating *
+                </label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((num) => (
                     <button
@@ -365,14 +381,16 @@ const ProductDetails = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm text-[var(--text)] mb-2">Your Review *</label>
+                <label className="block text-sm text-[var(--text)] mb-2">
+                  Your Review *
+                </label>
                 <textarea
                   placeholder="Share your thoughts about this product..."
                   className={`w-full rounded-lg p-3 border transition-all duration-200 focus:ring-2 focus:ring-[var(--button)] focus:border-transparent text-[var(--light-gray)] text-sm ${
-                    themeMode === 'dark' 
-                      ? 'bg-[var(--bg)] border-[var(--border)]' 
-                      : 'bg-white border-gray-300'
-                  } ${hasUserReviewed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    themeMode === "dark"
+                      ? "bg-[var(--bg)] border-[var(--border)]"
+                      : "bg-white border-gray-300"
+                  } ${hasUserReviewed ? "opacity-50 cursor-not-allowed" : ""}`}
                   rows="3"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
@@ -385,26 +403,26 @@ const ProductDetails = () => {
                 type="submit"
                 disabled={hasUserReviewed}
                 className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 hover:scale-105 text-sm ${
-                  hasUserReviewed 
-                    ? 'bg-gray-400 cursor-not-allowed text-white' 
-                    : 'bg-[var(--button)] text-white hover:bg-opacity-90'
+                  hasUserReviewed
+                    ? "bg-gray-400 cursor-not-allowed text-white"
+                    : "bg-[var(--button)] text-white hover:bg-opacity-90"
                 }`}
               >
-                {hasUserReviewed ? 'Already Reviewed' : 'Submit Review'}
+                {hasUserReviewed ? "Already Reviewed" : "Submit Review"}
               </button>
             </form>
           </div>
         </div>
+
         <div className="h-20 bg-[var(--bg)]"></div>
       </div>
 
-      {/* Custom Scrollbar Styles */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: ${themeMode === 'dark' ? 'var(--bg)' : '#f1f1f1'};
+          background: ${themeMode === "dark" ? "var(--bg)" : "#f1f1f1"};
           border-radius: 3px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
