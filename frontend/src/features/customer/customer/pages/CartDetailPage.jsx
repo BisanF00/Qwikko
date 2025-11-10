@@ -84,8 +84,7 @@ const CartDetailPage = () => {
         return;
       }
       if (!currentCart?.id) return showModal("Cart not loaded yet");
-      navigate(`/customer/order-details/${currentCart.id}`, { state: { cartId: currentCart.id } });
-
+      
       try {
         localStorage.setItem("currentCart", JSON.stringify(currentCart));
         localStorage.setItem(
@@ -172,9 +171,8 @@ const CartDetailPage = () => {
   console.log("Total discount from all coupons:", totalDiscount);
   console.log("Final total:", discountedTotal);
 
-
   return (
-    <div className={`min-h-screen ${themeMode === 'dark' ? 'bg-[var(--bg)]' : 'bg-[var(--textbox)]'} transition-colors duration-300`}>
+    <div className={`min-h-screen ${themeMode === 'dark' ? 'bg-[var(--bg)]' : 'bg-white'} transition-colors duration-300`}>
       {/* Modal */}
       {modalVisible && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
@@ -192,11 +190,9 @@ const CartDetailPage = () => {
         </div>
       )}
 
-      {/* Header Section - بدون غرادينت */}
+      {/* Header Section */}
       <div className="h-6"></div>
-      <div className={`w-full text-left  ${
-        themeMode === 'dark' ? 'bg-[var(--bg)]' : 'bg-[var(--textbox)]'
-      }`}>
+      <div className={`w-full text-left ${themeMode === 'dark' ? 'bg-[var(--bg)]' : 'bg-white'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className={`text-3xl sm:text-4xl font-bold mb-3 pt-6 sm:pt-8 ${
             themeMode === 'dark' ? 'text-white' : 'text-gray-900'
@@ -206,39 +202,7 @@ const CartDetailPage = () => {
           <p className={`${
             themeMode === 'dark' ? 'text-gray-300' : 'text-gray-600'
           } max-w-2xl text-base sm:text-lg`}>
-    <div
-      className={`min-h-screen ${
-        themeMode === "dark" ? "bg-[var(--bg)]" : "bg-white"
-      } transition-colors duration-300`}
-    >
-      {/* Header Section with Gradient */}
-      <div
-        className="w-full text-left pt-4"
-        style={{
-          background:
-            themeMode === "dark"
-              ? `linear-gradient(to bottom, 
-                rgba(0, 0, 0, 0.21) 0%, 
-                var(--bg) 100%)`
-              : `linear-gradient(to bottom, 
-                rgba(113, 117, 116, 0.12) 0%, 
-                var(--bg) 100%)`,
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1
-            className={`text-4xl font-bold mb-3 pt-8 ${
-              themeMode === "dark" ? "text-white" : "text-gray-900"
-            }`}
-          >
-            Shopping Cart
-          </h1>
-          <p
-            className={`${
-              themeMode === "dark" ? "text-gray-300" : "text-gray-600"
-            } max-w-2xl text-lg`}
-          >
-            Review your items and proceed to checkout
+            Review and manage your cart items
           </p>
         </div>
       </div>

@@ -95,6 +95,7 @@ exports.fetchStoreDetails = async function (req, res) {
  * @body {Object} address - Address object with address_line1 and city
  * @returns {Object} Order details
  */
+
 exports.postOrderFromCart = async function (req, res) {
   try {
     const userId = req.user.id;
@@ -202,6 +203,8 @@ exports.getOrderDetails = async function (req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
 
 /**
  * @function trackOrder
@@ -895,7 +898,7 @@ exports.submitOrderDecision = async (req, res) => {
       .status(500)
       .json({ success: false, message: err.message || "Server error" });
 
-
+  }}
 exports.calculateDeliveryPreview = async function (req, res) {
   try {
     const userId = req.user.id;
