@@ -2106,7 +2106,7 @@ exports.applyCustomerDecision = async ({ orderId, customerId, action }) => {
     const order = oRows[0];
 
     // لازم يكون بمرحلة انتظار قرار الزبون
-    if ((order.status || "").toLowerCase() !== "awaiting_customer_decision") {
+    if ((order.status || "").toLowerCase() !== "needs_decision") {
       await client.query("ROLLBACK");
       return null;
     }
