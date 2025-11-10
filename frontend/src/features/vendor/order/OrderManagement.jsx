@@ -213,30 +213,13 @@ export default function OrderManagement() {
   const visibleItems = items.slice(0, visibleCount);
 
   // ألوان
-  const pageBg = isDarkMode ? "#242625" : "#f0f2f1";
+  // const pageBg = isDarkMode ? "#242625" : "#f0f2f1";
   const innerBg = isDarkMode ? "#313131" : "#ffffff";
   const textColor = isDarkMode ? "#ffffff" : "#242625";
   const borderColor = isDarkMode ? "#f9f9f9" : "#ccc";
   const inputBg = isDarkMode ? "#666666" : "#ffffff";
 
-return (
-  <div
-    className="min-h-screen w-full"
-    style={{
-      backgroundColor: isDarkMode ? "var(--bg-dark)" : "var(--bg)",
-      color: "var(--text)",
-      padding: "3rem",
-    }}
-  >
-    {/* الحاوية العامة متجاوبة */}
-    <div className="max-w-screen-xl mx-auto px-4 sm:px-8 lg:px-12 py-8 sm:py-12 lg:py-16">
-      <h1 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-10 text-center sm:text-left">
-        Order Management
-      </h1>
-
-      {/* أزرار الفلترة */}
-      <div className="mb-8 flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3">
-  // Badge بسيطة حسب حالة الطلب
+   // Badge بسيطة حسب حالة الطلب
   const OrderBadge = ({ status }) => {
     const s = (status || "").toLowerCase();
     const base =
@@ -269,6 +252,24 @@ return (
       </span>
     );
   };
+return (
+  <div
+    className="min-h-screen w-full"
+    style={{
+      backgroundColor: isDarkMode ? "var(--bg-dark)" : "var(--bg)",
+      color: "var(--text)",
+      padding: "3rem",
+    }}
+  >
+    {/* الحاوية العامة متجاوبة */}
+    <div className="max-w-screen-xl mx-auto px-4 sm:px-8 lg:px-12 py-8 sm:py-12 lg:py-16">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-10 text-center sm:text-left">
+        Order Management
+      </h1>
+
+      {/* أزرار الفلترة */}
+      <div className="mb-8 flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3">
+ 
 
          {Object.keys(STATUS_LABELS).map((key) => (
           <button
@@ -471,6 +472,7 @@ return (
         </div>
       )}
     </div>
+  </div>
 );
 
 }

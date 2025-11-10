@@ -501,21 +501,7 @@ const handleAddToCartWithAnimation = (e) => {
         />
       )} */}
 
-      <div className="min-h-screen bg-[var(--bg)] py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Product Details */}
-          <div className="flex flex-col lg:flex-row gap-8 mb-4 p-12">
-            {/* Product Images */}
-            <div className="w-full lg:w-1/2">
-              {images.length > 0 && (
-                <>
-                  <div className="relative rounded-2xl overflow-hidden mb-4 bg-[var(--div)] p-4">
-                    <img
-                      src={images[currentImage]}
-                      alt={product.name}
-                      className="w-full h-96 object-contain rounded-2xl cursor-pointer"
-                      onClick={() => setIsOpen(true)}
-                    />
+
     <div className="min-h-screen bg-[var(--bg)] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Product Details */}
@@ -533,24 +519,6 @@ const handleAddToCartWithAnimation = (e) => {
                   />
                 </div>
 
-                {images.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto">
-                    {images.map((img, index) => (
-                      <div key={index} className="bg-[var(--div)] p-2 rounded-lg">
-                        <img
-                          src={img}
-                          alt={`${product.name} ${index + 1}`}
-                          className={`w-20 h-20 object-cover rounded-lg cursor-pointer border-2 ${
-                            currentImage === index
-                              ? "border-[var(--button)]"
-                              : "border-transparent"
-                          }`}
-                          onClick={() => setCurrentImage(index)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  
                   {/* Thumbnail Images */}
                   {images.length > 1 && (
                     <div className="flex gap-2 overflow-x-auto">
@@ -656,68 +624,57 @@ const handleAddToCartWithAnimation = (e) => {
             </div>
           </div>
 
-        {/* Reviews Section */}
-        <div
-          className={`rounded-2xl overflow-hidden ${
-            themeMode === "dark" ? "bg-[var(--div)]" : "bg-[var(--textbox)]"
-          } shadow-sm`}
-        >
-          <div className="p-6">
-            <h2 className="text-xl font-bold text-[var(--text)] mb-4">
-              Customer Reviews ({reviewsCount})
-            </h2>
+              <div className={`rounded-2xl overflow-hidden ${themeMode === "dark" ? "bg-[var(--div)]" : "bg-[var(--textbox)]"} shadow-sm`}>
+  <div className="p-6">
+    <h2 className="text-xl font-bold text-[var(--text)] mb-4">
+      Customer Reviews ({reviewsCount})
+    </h2>
 
-            {averageRating && (
-              <div className="mb-3">
-                <h4 className="font-semibold text-lg">
-                  ⭐ Average Rating: {averageRating}
-                </h4>
+    {averageRating && (
+      <div className="mb-3">
+        <h4 className="font-semibold text-lg">
+          ⭐ Average Rating: {averageRating}
+        </h4>
+      </div>
+    )}
+
+    {reviews.length === 0 ? (
+      <p className="text-[var(--light-gray)] text-center py-6">
+        No reviews yet. Be the first to review this product!
+      </p>
+    ) : (
+      <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+        {reviews.map((review) => (
+          <div
+            key={review.id}
+            className="border-b border-[var(--border)] pb-4 last:border-b-0"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 bg-[var(--button)] rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                {review.user_name?.charAt(0)?.toUpperCase() || "U"}
               </div>
-            )}
-
-            {reviews.length === 0 ? (
-              <p className="text-[var(--light-gray)] text-center py-6">
-                No reviews yet. Be the first to review this product!
-              </p>
-            ) : (
-              <div className="space-y-4 max-h-34 overflow-y-auto pr-2 custom-scrollbar">
-                {reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="border-b border-[var(--border)] pb-4 last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 bg-[var(--button)] rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                        {review.user_name?.charAt(0)?.toUpperCase() || "U"}
-                      </div>
-                      <div>
-                        <span className="font-semibold text-[var(--text)] text-sm block">
-                          {review.user_name || "Anonymous"}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            {renderStars(review.rating)}
-                          </div>
-                          <span className="text-xs text-[var(--light-gray)]">
-                            {new Date(review.created_at).toLocaleDateString()}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              {renderStars(review.rating)}
-                            </div>
-                            <span className="text-xs text-[var(--light-gray)]">
-                              {new Date(review.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-[var(--text)] text-sm leading-relaxed">
-                        {review.comment}
-                      </p>
-                    </div>
-                  ))}
+              <div>
+                <span className="font-semibold text-[var(--text)] text-sm block">
+                  {review.user_name || "Anonymous"}
+                </span>
+                <div className="flex items-center gap-2">
+                  {renderStars(review.rating)}
+                  <span className="text-xs text-[var(--light-gray)]">
+                    {new Date(review.created_at).toLocaleDateString()}
+                  </span>
                 </div>
-              )}
+              </div>
+            </div>
+            <p className="text-[var(--text)] text-sm leading-relaxed">
+              {review.comment}
+            </p>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</div>
+
 
               {/* Add Review Form */}
               <form onSubmit={handleAddReview} className="mt-6 pt-6 border-t border-[var(--border)]">
@@ -733,6 +690,7 @@ const handleAddToCartWithAnimation = (e) => {
                   </div>
                 )}
 
+                {/* Rating */}
                 <div className="mb-4">
                   <label className="block text-sm text-[var(--text)] mb-2">Your Rating *</label>
                   <div className="flex gap-1">
@@ -752,53 +710,35 @@ const handleAddToCartWithAnimation = (e) => {
                   </div>
                 </div>
 
-              <div className="mb-4">
-                <label className="block text-sm text-[var(--text)] mb-2">
-                  Your Rating *
-                </label>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      className={`text-xl transition-transform duration-200 hover:scale-110 ${
-                        rating >= num ? "text-yellow-400" : "text-gray-300"
-                      }`}
-                      onClick={() => setRating(num)}
-                      disabled={hasUserReviewed}
-                    >
-                      <FaStar />
-                    </button>
-                  ))}
+                {/* Review Textarea */}
+                <div className="mb-4">
+                  <label className="block text-sm text-[var(--text)] mb-2">Your Review *</label>
+                  <textarea
+                    placeholder={hasUserReviewed ? 'Already Reviewed' : 'Share your thoughts about this product...'}
+                    className={`w-full px-6 py-3 rounded-lg font-semibold transition-all duration-300 text-sm border ${
+                      themeMode === "dark"
+                        ? "bg-[var(--bg)] border-[var(--border)] text-[var(--light-gray)]"
+                        : "bg-white border-gray-300 text-[var(--text)]"
+                    } ${hasUserReviewed ? "opacity-50 cursor-not-allowed" : ""}`}
+                    rows="3"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    required
+                    disabled={hasUserReviewed}
+                  />
                 </div>
 
-              <div className="mb-4">
-                <label className="block text-sm text-[var(--text)] mb-2">
-                  Your Review *
-                </label>
-                <textarea
-                  placeholder="Share your thoughts about this product..."
-                  className={`w-full rounded-lg p-3 border transition-all duration-200 focus:ring-2 focus:ring-[var(--button)] focus:border-transparent text-[var(--light-gray)] text-sm ${
-                    themeMode === "dark"
-                      ? "bg-[var(--bg)] border-[var(--border)]"
-                      : "bg-white border-gray-300"
-                  } ${hasUserReviewed ? "opacity-50 cursor-not-allowed" : ""}`}
-                  rows="3"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  required
-                  disabled={hasUserReviewed}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 hover:scale-105 text-sm ${
-                    hasUserReviewed 
-                      ? 'bg-gray-400 cursor-not-allowed text-white' 
-                      : 'bg-[var(--button)] text-white hover:bg-opacity-90'
-                  }`}
-                >
-                  {hasUserReviewed ? 'Already Reviewed' : 'Submit Review'}
-                </button>
+                {/* Submit Button */}
+                {!hasUserReviewed && (
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-lg bg-[var(--button)] text-white font-semibold hover:bg-opacity-90 transition-all duration-300"
+                  >
+                    Submit Review
+                  </button>
+                )}
               </form>
-            </div>
-          </div>
+
 
           {/* Recommended Products Section */}
           <section className="max-w-7xl mx-auto px-6 py-20">

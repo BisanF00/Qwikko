@@ -108,6 +108,10 @@ const OrdersPage = () => {
     }
   };
 
+  const handleProductClick = (productId) => {
+    navigate(`/customer/products/${productId}`);
+  };
+
   useEffect(() => {
     dispatch(fetchOrders());
   }, [dispatch]);
@@ -179,7 +183,6 @@ const OrdersPage = () => {
           <button 
             onClick={() => dispatch(fetchOrders())}
             className="relative bg-gradient-to-r from-[var(--button)] to-[var(--primary)] text-white px-8 py-4 rounded-2xl hover:shadow-2xl transition-all duration-300 font-bold shadow-lg transform hover:scale-105 group overflow-hidden"
-
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
             <span className="relative z-10 flex items-center gap-3">
@@ -264,7 +267,7 @@ const OrdersPage = () => {
 
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section - بدون div إضافية */}
+        {/* Header Section */}
         <div className="relative overflow-hidden mb-8">
           <div className="pt-8 pb-4 relative">
             {/* Animated Floating Circles */}
@@ -347,7 +350,7 @@ const OrdersPage = () => {
             <div className={`w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 mx-auto mb-4 sm:mb-6 rounded-full ${
               themeMode === "dark" ? "bg-[var(--div)]" : "bg-white"
             } flex items-center justify-center shadow-2xl transform group-hover:scale-110 transition-all duration-300 relative z-10`}>
-              <Package className={themeMode === "dark" ? "text-gray-400" : "text-gray-500"} size={32} className="sm:w-10 sm:h-10" />
+              <Package className={themeMode === "dark" ? "text-gray-400" : "text-gray-500"} size={32} />
             </div>
             <h3 className={`text-xl sm:text-2xl lg:text-3xl font-bold mb-3 sm:mb-4 ${
               themeMode === "dark" ? "text-white" : "text-gray-900"
@@ -397,34 +400,24 @@ const OrdersPage = () => {
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {/* Order Header */}
-                  <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 mb-8 items-center">
-                    {/* Order ID */}
-                    <div className="text-center">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-2">
-                        Order ID
-                      </div>
-                      <div className="text-lg font-bold bg-gradient-to-r from-[var(--text)] to-[var(--button)] bg-clip-text text-transparent">
-                        #{order.id}
-                      </div>
-                    </div>
-
-                    {/* Order Date */}
-                    <div className="text-center">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-2">
-                        Order Date
-                      </div>
-                      <div className="text-[var(--text)] font-semibold">
-                        {new Date(order.created_at).toLocaleDateString(
-                          "en-US",
-                          { year: "numeric", month: "short", day: "numeric" }
-                        )}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    {/* Order Info */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {/* Order ID */}
+                      <div className="text-center">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-2">
+                          Order ID
+                        </div>
+                        <div className="text-lg font-bold bg-gradient-to-r from-[var(--text)] to-[var(--button)] bg-clip-text text-transparent">
+                          #{order.id}
+                        </div>
                       </div>
 
                       {/* Order Date */}
                       <div className="text-center">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-1 sm:mb-2">Date</div>
-                        <div className="text-[var(--text)] font-semibold flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base">
-                          <Clock size={12} className="sm:w-3 sm:h-3" />
+                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-2">Date</div>
+                        <div className="text-[var(--text)] font-semibold flex items-center justify-center gap-2 text-sm">
+                          <Clock size={14} />
                           {new Date(order.created_at).toLocaleDateString('en-US', { 
                             month: 'short', 
                             day: 'numeric' 
@@ -434,40 +427,40 @@ const OrdersPage = () => {
 
                       {/* Total Amount */}
                       <div className="text-center">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-1 sm:mb-2">Total</div>
-                        <div className="text-lg sm:text-xl font-bold text-[var(--button)]">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-2">Total</div>
+                        <div className="text-lg font-bold text-[var(--button)]">
                           ${parseFloat(order.total_with_shipping || order.total_amount).toFixed(2)}
                         </div>
                       </div>
 
                       {/* Order Status */}
                       <div className="text-center">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-1 sm:mb-2">Status</div>
-                        <span className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold uppercase tracking-wide inline-flex items-center gap-1 max-w-full truncate ${
+                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)] mb-2">Status</div>
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide inline-flex items-center gap-1 ${
                           order.status === 'completed' 
                             ? 'bg-green-500/20 text-green-600 border border-green-500/30'
                             : order.status === 'pending'
                             ? 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30'
                             : 'bg-blue-500/20 text-blue-600 border border-blue-500/30'
                         }`}>
-                          <Truck size={10} className="sm:w-3 sm:h-3" />
-                          <span className="truncate text-xs">{order.status}</span>
+                          <Truck size={12} />
+                          {order.status}
                         </span>
                       </div>
                     </div>
 
-                    {/* Shipping and Payment Info - Now on the same line */}
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    {/* Shipping and Payment Info */}
+                    <div className="grid grid-cols-2 gap-4">
                       {/* Ship To */}
-                      <div className="flex items-center gap-2 sm:gap-3 group cursor-pointer transform hover:-translate-y-1 transition-all duration-300">
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${
+                      <div className="flex items-center gap-3 group cursor-pointer transform hover:-translate-y-1 transition-all duration-300">
+                        <div className={`w-10 h-10 rounded-xl ${
                           themeMode === "dark" ? "bg-[var(--button)]/20" : "bg-[var(--button)]/10"
                         } flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                          <MapPin size={14} className={themeMode === "dark" ? "text-[var(--button)]" : "text-[var(--button)]"} />
+                          <MapPin size={16} className={themeMode === "dark" ? "text-[var(--button)]" : "text-[var(--button)]"} />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div>
                           <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)]">Ship To</div>
-                          <div className="text-[var(--text)] font-semibold truncate text-sm sm:text-base">
+                          <div className="text-[var(--text)] font-semibold">
                             {shippingAddress ? 
                               `${shippingAddress.city}` 
                               : 'N/A'
@@ -477,15 +470,15 @@ const OrdersPage = () => {
                       </div>
 
                       {/* Payment Status */}
-                      <div className="flex items-center gap-2 sm:gap-3 group cursor-pointer transform hover:-translate-y-1 transition-all duration-300">
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${
+                      <div className="flex items-center gap-3 group cursor-pointer transform hover:-translate-y-1 transition-all duration-300">
+                        <div className={`w-10 h-10 rounded-xl ${
                           themeMode === "dark" ? "bg-[var(--button)]/20" : "bg-[var(--button)]/10"
                         } flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                          <CreditCard size={14} className={themeMode === "dark" ? "text-[var(--button)]" : "text-[var(--button)]"} />
+                          <CreditCard size={16} className={themeMode === "dark" ? "text-[var(--button)]" : "text-[var(--button)]"} />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div>
                           <div className="text-xs font-semibold uppercase tracking-wider text-[var(--light-gray)]">Payment</div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wide truncate max-w-full inline-block ${
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
                             order.payment_status === 'paid' 
                               ? 'bg-green-500/20 text-green-600 border border-green-500/30'
                               : 'bg-red-500/20 text-red-500 border border-red-500/30'
@@ -495,6 +488,7 @@ const OrdersPage = () => {
                         </div>
                       </div>
                     </div>
+                  </div>
 
                   {/* 💡 Customer Decision Panel (يظهر فقط إذا فيه مرفوض) */}
                   {showDecisionPanel && (
@@ -706,7 +700,7 @@ const OrdersPage = () => {
                                   {item.name}
                                 </span>
 
-                                {/* سطر الكمية والسعر (يبقى كما هو) */}
+                                {/* سطر الكمية والسعر */}
                                 <span
                                   className={`text-sm ${
                                     themeMode === "dark"
@@ -745,22 +739,22 @@ const OrdersPage = () => {
                                 )}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-[var(--border)]/50 mt-auto">
+                    <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-[var(--border)]/50 mt-6">
                       <button
-                        className="bg-[var(--button)] hover:bg-[#015c40] text-white font-semibold px-3 sm:px-4 py-2 sm:py-3 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-1 sm:gap-2 justify-center flex-1 text-xs sm:text-sm"
+                        className="bg-[var(--button)] hover:bg-[#015c40] text-white font-semibold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2 justify-center flex-1"
                         onClick={() => navigate(`/customer/track-order/${order.id}`)}
                       >
-                        <Eye size={14} />
+                        <Eye size={16} />
                         Track Order
                       </button>
                       <button
-                        className={`font-semibold px-3 sm:px-4 py-2 sm:py-3 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-1 sm:gap-2 justify-center flex-1 text-xs sm:text-sm ${
+                        className={`font-semibold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2 justify-center flex-1 ${
                           themeMode === 'dark'
                             ? "bg-[var(--textbox)] text-[var(--button)] hover:bg-[var(--button)] hover:text-white"
                             : "bg-white text-[var(--button)] border border-[var(--button)] hover:bg-[var(--button)] hover:text-white"
@@ -778,28 +772,28 @@ const OrdersPage = () => {
                           }
                         }}
                       >
-                        <RotateCcw size={14} />
+                        <RotateCcw size={16} />
                         Reorder
                       </button>
                     </div>
 
-                    {/* Payment Details with Custom Scrollbar - Same style as reviews */}
+                    {/* Payment Details with Custom Scrollbar */}
                     {order.payments && order.payments.length > 0 && (
-                      <div className="border-t border-[var(--border)] pt-4 sm:pt-6 mt-4 sm:mt-6">
-                        <h3 className={`font-bold text-base sm:text-lg mb-3 sm:mb-4 flex items-center gap-2 ${
+                      <div className="border-t border-[var(--border)] pt-6 mt-6">
+                        <h3 className={`font-bold text-lg mb-4 flex items-center gap-2 ${
                           themeMode === 'dark' ? "text-[var(--textbox)]" : "text-gray-800"
                         }`}>
                           <CreditCard size={18} className="text-[var(--button)]" />
                           Payment Details
                         </h3>
                         <div 
-                          className="space-y-2 sm:space-y-3 max-h-28 sm:max-h-32 overflow-y-auto pr-2 custom-scrollbar"
+                          className="space-y-3 max-h-32 overflow-y-auto pr-2 custom-scrollbar"
                         >
                           {order.payments.map((payment) => (
-                            <div key={payment.id} className={`p-3 sm:p-4 rounded-xl border border-[var(--border)] ${
+                            <div key={payment.id} className={`p-4 rounded-xl border border-[var(--border)] ${
                               themeMode === 'dark' ? "bg-[var(--bg)]" : "bg-gray-50"
                             }`}>
-                              <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                              <div className="flex flex-wrap items-center gap-3 text-sm">
                                 <span className={`font-semibold ${
                                   themeMode === 'dark' ? "text-[var(--textbox)]" : "text-gray-700"
                                 }`}>
@@ -821,7 +815,7 @@ const OrdersPage = () => {
                                   </span>
                                 )}
                                 {payment.transaction_id && (
-                                  <span className="text-[var(--light-gray)] font-mono text-xs truncate">
+                                  <span className="text-[var(--light-gray)] font-mono text-xs">
                                     TX: {payment.transaction_id}
                                   </span>
                                 )}
@@ -832,72 +826,72 @@ const OrdersPage = () => {
                       </div>
                     )}
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Enhanced Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-4 mb-8">
+            {/* Previous Button */}
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
+                currentPage === 1
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:shadow-lg'
+              } ${
+                themeMode === "dark" 
+                  ? "bg-[var(--div)] text-[var(--text)] border border-[var(--border)]" 
+                  : "bg-white text-gray-700 border border-gray-300"
+              }`}
+            >
+              <ChevronLeft size={20} />
+              Prev
+            </button>
+
+            {/* Page Numbers - Max 5 */}
+            <div className="flex items-center space-x-2">
+              {visiblePages.map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`min-w-[44px] h-12 rounded-xl font-bold text-sm transition-all duration-300 ${
+                    currentPage === page
+                      ? 'bg-gradient-to-r from-[var(--button)] to-[var(--primary)] text-white shadow-2xl scale-110'
+                      : `${themeMode === "dark" ? "text-white border border-[var(--border)] hover:bg-[var(--hover)]" : "text-gray-700 border border-gray-300 hover:bg-gray-50"} hover:border-[var(--button)] hover:scale-105`
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
             </div>
 
-            {/* Enhanced Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 sm:gap-4 mb-6 sm:mb-8">
-                {/* Previous Button */}
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 text-xs sm:text-sm ${
-                    currentPage === 1
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:shadow-lg'
-                  } ${
-                    themeMode === "dark" 
-                      ? "bg-[var(--div)] text-[var(--text)] border border-[var(--border)]" 
-                      : "bg-white text-gray-700 border border-gray-300"
-                  }`}
-                >
-                  <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
-                  <span className="hidden xs:inline">Prev</span>
-                </button>
-
-                {/* Page Numbers - Max 5 */}
-                <div className="flex items-center space-x-1 sm:space-x-2">
-                  {visiblePages.map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`min-w-[36px] sm:min-w-[44px] h-8 sm:h-10 sm:h-12 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 ${
-                        currentPage === page
-                          ? 'bg-gradient-to-r from-[var(--button)] to-[var(--primary)] text-white shadow-2xl scale-110'
-                          : `${themeMode === "dark" ? "text-white border border-[var(--border)] hover:bg-[var(--hover)]" : "text-gray-700 border border-gray-300 hover:bg-gray-50"} hover:border-[var(--button)] hover:scale-105`
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Next Button */}
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 text-xs sm:text-sm ${
-                    currentPage === totalPages
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:shadow-lg'
-                  } ${
-                    themeMode === "dark" 
-                      ? "bg-[var(--div)] text-[var(--text)] border border-[var(--border)]" 
-                      : "bg-white text-gray-700 border border-gray-300"
-                  }`}
-                >
-                  <span className="hidden xs:inline">Next</span>
-                  <ChevronRight size={16} className="sm:w-5 sm:h-5" />
-                </button>
-              </div>
-            )}
-          </>
+            {/* Next Button */}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
+                currentPage === totalPages
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:shadow-lg'
+              } ${
+                themeMode === "dark" 
+                  ? "bg-[var(--div)] text-[var(--text)] border border-[var(--border)]" 
+                  : "bg-white text-gray-700 border border-gray-300"
+              }`}
+            >
+              Next
+              <ChevronRight size={20} />
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Custom Scrollbar Styles - Same as product details page */}
+      {/* Custom Scrollbar Styles */}
       <style jsx>{`
         @keyframes pulse-slow {
           0%, 100% { opacity: 0.1; transform: scale(1); }

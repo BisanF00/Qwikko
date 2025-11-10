@@ -25,7 +25,8 @@ import {
   FiPercent,
   FiGift,
   FiChevronDown,
-  FiX
+  FiX,
+  FiInfo
 } from "react-icons/fi";
 
 // Toast Component
@@ -61,13 +62,6 @@ const Toast = ({ message, type = "info", onClose }) => {
     </div>
   );
 };
-
-// FiInfo icon if not imported
-const FiInfo = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
 
 const OrderDetailsPage = () => {
   const { orderId } = useParams();
@@ -167,10 +161,11 @@ const OrderDetailsPage = () => {
   const [pointsError, setPointsError] = useState("");
   const [couponResult, setCouponResult] = useState(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  
   const cities = [
-  "Amman", "Zarqa", "Irbid", "Aqaba", "Mafraq", "Jerash", 
-  "Madaba", "Karak", "Tafilah", "Ma'an", "Ajloun",
-];
+    "Amman", "Zarqa", "Irbid", "Aqaba", "Mafraq", "Jerash", 
+    "Madaba", "Karak", "Tafilah", "Ma'an", "Ajloun",
+  ];
 
   useEffect(() => {
     if (profile) {
@@ -183,7 +178,6 @@ const OrderDetailsPage = () => {
     }
   }, [profile]);
 
-  
   // حساب نقاط الولاء مرة واحدة عند التحميل
   useEffect(() => {
     const fetchLoyaltyPoints = async () => {
@@ -204,7 +198,6 @@ const OrderDetailsPage = () => {
     };
     fetchLoyaltyPoints();
   }, []);
-
 
   useEffect(() => {
     if (cartFromState) {
@@ -429,7 +422,6 @@ const OrderDetailsPage = () => {
         total: totalWithShipping,
         final: totalWithShipping,
       });
-      // لا حاجة لـ showToast هنا لأن validateCoupon تظهر التوست بالفعل
     }
   };
 
@@ -518,18 +510,6 @@ const OrderDetailsPage = () => {
 
       // ✅ إعداد بيانات نقاط الولاء للخلفية
       const loyaltyPointsToUse = usePointsChecked ? Number(userPointsToUse) : 0;
-      
-      const checkoutPayload = {
-        cart_id: currentCart.id,
-        address: fullAddress,
-        paymentMethod: paymentMethod === "card" ? "credit_card" : paymentMethod,
-        paymentData,
-        coupon_code: appliedCoupon?.code || null,
-        use_loyalty_points: loyaltyPointsToUse,
-      };
-
-      console.log("📤 Checkout payload:", checkoutPayload);
-      console.log("🔍 Loyalty points to use:", loyaltyPointsToUse);
 
       if (paymentMethod === "card") {
         const vErr = validateCardFields();
@@ -540,6 +520,13 @@ const OrderDetailsPage = () => {
         }
       }
 
+      // إعداد العناصر للسيرفر
+      const itemsForServer = currentCart.items.map((item) => ({
+        product_id: Number(item.product_id || item.id),
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        vendor_id: Number(item.vendor_id || (item.vendor && item.vendor.id) || 0),
+      }));
 
       // لا ترسل deliveryFee محسوبة مسبقاً - دع الباك إند يحسبها
       const checkoutPayload = {
@@ -548,9 +535,10 @@ const OrderDetailsPage = () => {
         paymentMethod: paymentMethod === "card" ? "credit_card" : paymentMethod,
         paymentData,
         coupon_code: appliedCouponFromState?.code || null,
-        use_loyalty_points: usePointsChecked ? userPointsToUse : 0,
+        use_loyalty_points: loyaltyPointsToUse,
         cartItems: itemsForServer,
       };
+      
       const newOrder = await customerAPI.checkout(checkoutPayload);
       
       console.log("✅ Order created:", newOrder);
@@ -580,7 +568,6 @@ const OrderDetailsPage = () => {
       setTimeout(() => {
         navigate("/customer/orders");
       }, 1500);
-      
 
     } catch (err) {
       console.error("❌ Checkout failed:", err);
@@ -633,7 +620,6 @@ const OrderDetailsPage = () => {
               setTimeout(() => {
                 navigate("/customer/orders");
               }, 1500);
-             
 
             } catch (err) {
               console.error("Checkout failed:", err);
@@ -690,38 +676,22 @@ const OrderDetailsPage = () => {
         <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
           <FiAlertCircle className="text-2xl text-red-500" />
         </div>
-      </div>
-    );
-
-  if (error)
-    return (
-      <div
-        className={`min-h-screen flex items-center justify-center ${containerClass}`}
-      >
-        <div
-          className={`text-center max-w-md p-8 rounded-2xl border-2 ${errorClass} animate-fade-in-up backdrop-blur-sm`}
+        <h3 className="text-xl font-bold mb-2">Error Loading Order</h3>
+        <p className="mb-6 opacity-90">{error}</p>
+        <button
+          onClick={() => navigate(-1)}
+          className={`${buttonClass} px-6 py-3 rounded-xl flex items-center justify-center mx-auto`}
         >
-          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-            <FiAlertCircle className="text-2xl text-red-500" />
-          </div>
-          <h3 className="text-xl font-bold mb-2">Error Loading Order</h3>
-          <p className="mb-6 opacity-90">{error}</p>
-          <button
-            onClick={() => navigate(-1)}
-            className={`${buttonClass} px-6 py-3 rounded-xl flex items-center justify-center mx-auto`}
-          >
-            <FiArrowLeft className="mr-2" />
-            Go Back
-          </button>
-        </div>
+          <FiArrowLeft className="mr-2" />
+          Go Back
+        </button>
       </div>
-    );
+    </div>
+  );
 
   if (!currentCart)
     return (
-      <div
-        className={`min-h-screen flex items-center justify-center ${containerClass}`}
-      >
+      <div className={`min-h-screen flex items-center justify-center ${containerClass}`}>
         <div className="text-center max-w-md p-8 animate-fade-in">
           <div className="w-20 h-20 bg-[var(--div)] rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
             <FiShoppingCart className="text-2xl text-[var(--text)]" />
@@ -941,13 +911,13 @@ const OrderDetailsPage = () => {
                       </select>
                     </div>
                     <div className="md:col-span-2 flex justify-end mt-4">
-                    <button
-                      onClick={handleCalculateDelivery}
-                      className={`${buttonClass} px-6 py-3 rounded-xl text-sm font-semibold backdrop-blur-sm transition-all duration-200 hover:scale-105`}
-                    >
-                      Calculate Delivery
-                    </button>
-                  </div>
+                      <button
+                        onClick={handleCalculateDelivery}
+                        className={`${buttonClass} px-6 py-3 rounded-xl text-sm font-semibold backdrop-blur-sm transition-all duration-200 hover:scale-105`}
+                      >
+                        Calculate Delivery
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -993,18 +963,18 @@ const OrderDetailsPage = () => {
                     </div>
                     
                     {/* Coupon Discount */}
-                  {appliedCoupon?.discount_amount > 0 && (
-                    <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
-                      <span className="text-green-600 dark:text-green-400 flex items-center text-sm">
-                        <FiPercent className="mr-2" />
-                        Coupon Discount
-                      </span>
-                      <span className="font-semibold text-green-600 dark:text-green-400 text-sm">
-                        -$
-                        {Number(appliedCoupon.discount_amount || 0).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
+                    {appliedCoupon?.discount_amount > 0 && (
+                      <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                        <span className="text-green-600 dark:text-green-400 flex items-center text-sm">
+                          <FiPercent className="mr-2" />
+                          Coupon Discount
+                        </span>
+                        <span className="font-semibold text-green-600 dark:text-green-400 text-sm">
+                          -$
+                          {Number(appliedCoupon.discount_amount || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                     
                     {/* Points Discount */}
                     {usePointsChecked && pointsDiscount > 0 && (
@@ -1027,42 +997,6 @@ const OrderDetailsPage = () => {
                       </span>
                     </div>
                   </div>
-
-//                   {/* Coupon Section */}
-//                   <div className="mb-6">
-//                     <h3 className="font-semibold mb-3 flex items-center text-base text-[var(--text)] tracking-tight">
-//                       <FiGift className={`mr-2 text-[var(--button)]`} />
-//                       Apply Coupon
-//                     </h3>
-//                     <div className="flex flex-col sm:flex-row gap-2 mb-3">
-//                       <input
-//                         type="text"
-//                         placeholder="Enter coupon code"
-//                         value={couponCode}
-//                         onChange={(e) => setCouponCode(e.target.value)}
-//                         className={`flex-1 p-3 rounded-xl border-2 ${inputClass} focus:shadow-lg min-w-0 backdrop-blur-sm text-sm`}
-//                       />
-//                       <button
-//                         onClick={handleValidateCoupon}
-//                         className={`${buttonClass} px-4 py-3 rounded-xl whitespace-nowrap sm:w-auto w-full backdrop-blur-sm text-sm`}
-//                       >
-//                         Apply
-//                       </button>
-//                     </div>
-//                     {couponResult && (
-//                       <div className={`p-3 rounded-xl border-2 backdrop-blur-sm text-sm ${
-//                         couponResult.discount > 0 ? successClass : errorClass
-//                       } animate-fade-in`}>
-//                         <p className="font-semibold tracking-tight">{couponResult.message}</p>
-//                         {couponResult.discount > 0 && (
-//                           <div className="mt-2 text-xs space-y-1">
-//                             <p className="text-[var(--text)]">Discount: <strong>${couponResult.discount.toFixed(2)}</strong></p>
-//                             <p className="text-[var(--text)]">New Total: <strong>${couponResult.final.toFixed(2)}</strong></p>
-//                           </div>
-//                         )}
-//                       </div>
-//                     )}
-//                   </div>
 
                   {/* Loyalty Points */}
                   <div className="mb-6">
