@@ -1,18 +1,32 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
-import { registerDelivery } from "./authSlice"; // تأكد من اسم الـ action
+import { registerDelivery, clearMessages } from "./authSlice";
 import { useNavigate } from "react-router-dom";
-import { FiEye, FiEyeOff } from "react-icons/fi";
-import { FaUser, FaPhone, FaMapMarkerAlt, FaIndustry } from "react-icons/fa";
-import { MdEmail } from "react-icons/md";
-import { FaLock } from "react-icons/fa";
+import {
+  FiEye,
+  FiEyeOff,
+  FiShield,
+  FiUserCheck,
+  FiAward,
+  FiStar,
+} from "react-icons/fi";
+import {
+  FaLock,
+  FaRocket,
+  FaUser,
+  FaPhone,
+  FaMapMarkerAlt,
+  FaIndustry,
+} from "react-icons/fa";
+import { MdEmail, MdSecurity, MdPrivacyTip } from "react-icons/md";
 
 const DeliveryRegister = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error, successMessage } = useSelector((state) => state.auth); // تأكد من الـ state structure
-  const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
+
+  const { loading, error, successMessage } = useSelector((state) => state.auth);
+  const isDark = useSelector((state) => state.deliveryTheme.darkMode);
 
   const {
     register,
@@ -20,487 +34,474 @@ const DeliveryRegister = () => {
     formState: { errors },
   } = useForm();
 
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const onSubmit = async (data) => {
-    setIsSubmitting(true);
+  const onSubmit = (data) => {
     dispatch(registerDelivery(data));
   };
 
   useEffect(() => {
     if (successMessage) {
-      // يمكنك تغيير هذا حسب منطق التطبيق
-      setTimeout(() => {
+      const t = setTimeout(() => {
+        dispatch(clearMessages());
         navigate("/delivery/login");
-      }, 2000);
+      }, 2500);
+      return () => clearTimeout(t);
     }
-  }, [successMessage, navigate]);
-
-  // Reset submitting state when loading changes
-  useEffect(() => {
-    if (!loading) {
-      setIsSubmitting(false);
-    }
-  }, [loading]);
+  }, [successMessage, dispatch, navigate]);
 
   return (
-    <div
-      className={`flex min-h-screen transition-colors duration-500
-      ${
-        isDarkMode
-          ? "bg-[var(--bg)] text-[var(--text)]"
-          : "bg-[var(--bg)] text-[var(--text)]"
-      }`}
-    >
-      {/* Left Section - Signup Form */}
-      <div
-        className={`w-full lg:w-1/2 flex flex-col justify-center items-center p-6 md:p-12 transition-colors duration-500 relative
-        ${isDarkMode ? "bg-[var(--div)]" : "bg-[var(--bg)]"}`}
-      >
-        {/* Decorative Top Border */}
+    <div className="min-h-screen bg-[var(--bg)] relative overflow-hidden flex items-center justify-center py-4 px-4 sm:px-6 lg:px-8">
+      {/* خلفية متحركة نفس تبعت الكستمر */}
+      <div className="absolute inset-0 pointer-events-none">
+        {!isDark && (
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-transparent to-purple-50/10 animate-pulse-slow"></div>
+        )}
+
+        <div className="absolute top-10 left-5 w-48 h-48 sm:w-72 sm:h-72 bg-[var(--button)]/10 rounded-full blur-2xl sm:blur-3xl animate-float-slow"></div>
         <div
-          className={`absolute top-0 left-0 w-full h-1 transition-colors duration-500
-          ${isDarkMode ? "bg-[var(--button)]" : "bg-[var(--button)]"}`}
+          className="absolute bottom-10 right-5 w-52 h-52 sm:w-80 sm:h-80 bg-[var(--primary)]/10 rounded-full blur-2xl sm:blur-3xl animate-float-slow"
+          style={{ animationDelay: "2s" }}
+        ></div>
+        <div
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-96 sm:h-96 bg-[var(--success)]/5 rounded-full blur-2xl sm:blur-3xl animate-pulse-slow"
+          style={{ animationDelay: "4s" }}
         ></div>
 
-        <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h2
-              className={`text-3xl font-bold mb-2 transition-colors duration-500`}
-            >
-              Delivery Signup
-            </h2>
-            <p
-              className={`text-lg transition-colors duration-500 ${
-                isDarkMode
-                  ? "text-[var(--light-gray)]"
-                  : "text-[var(--light-gray)]"
-              }`}
-            >
-              Join our delivery network
-            </p>
+        {!isDark && (
+          <div
+            className="absolute inset-0 opacity-[0.02]"
+            style={{
+              backgroundImage:
+                "linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)",
+              backgroundSize: "30px 30px",
+            }}
+          ></div>
+        )}
+      </div>
+
+      {/* نقط طايرة */}
+      {[...Array(4)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute w-1 h-1 bg-[var(--button)]/20 rounded-full animate-float"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            animationDelay: `${i * 0.5}s`,
+            animationDuration: `${4 + Math.random() * 4}s`,
+          }}
+        />
+      ))}
+
+      <div className="relative z-10 w-full max-w-6xl mx-auto">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8 xl:gap-12">
+          {/* اليسار - ترحيب */}
+          <div className="w-full lg:w-2/5 flex flex-col justify-center items-center text-center space-y-3 lg:space-y-5">
+            <div className="space-y-1 lg:space-y-2">
+              <div className="relative">
+                <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-[var(--text)] leading-tight">
+                  Join Qwikko Delivery
+                </h1>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                  <div className="w-6 sm:w-8 h-0.5 bg-gradient-to-r from-[var(--button)] to-[var(--primary)] rounded-full"></div>
+                  <div className="w-3 sm:w-4 h-0.5 bg-[var(--button)] rounded-full"></div>
+                  <div className="w-2 h-0.5 bg-[var(--primary)] rounded-full"></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative group">
+              <div className="absolute -inset-2 sm:-inset-3 bg-gradient-to-r from-[var(--button)]/15 to-[var(--primary)]/15 rounded-xl blur opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+              <img
+                src={isDark ? "/LogoDark.png" : "/logo.png"}
+                alt="Qwikko Logo"
+                className="h-12 sm:h-16 lg:h-20 xl:h-24 w-auto relative z-10 transform group-hover:scale-105 transition-transform duration-500"
+              />
+            </div>
+
+            <div className="hidden lg:block max-w-xs sm:max-w-sm">
+              <p className="text-sm text-[var(--light-gray)] leading-relaxed font-medium">
+                Register your delivery company to receive orders, manage
+                coverage, and access the delivery dashboard.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 pt-1">
+              {["Fast Onboarding", "Secure", "Vendor Ready"].map(
+                (feature, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-1 text-xs text-[var(--light-gray)]"
+                  >
+                    <FiStar className="text-[var(--button)] text-xs" />
+                    <span>{feature}</span>
+                  </div>
+                )
+              )}
+            </div>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div
-              className={`w-full p-4 rounded-lg mb-6 text-center transition-colors duration-300 ${
-                isDarkMode
-                  ? "bg-red-900 bg-opacity-20 text-red-200 border border-red-800"
-                  : "bg-red-100 text-red-700 border border-red-200"
-              }`}
-            >
-              {error}
-            </div>
-          )}
+          {/* اليمين - الفورم */}
+          <div className="w-full lg:w-3/5 max-w-xs sm:max-w-sm md:max-w-md">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-[var(--button)] to-[var(--primary)] rounded-xl blur opacity-20 group-hover:opacity-30 transition-all duration-500"></div>
 
-          {/* Success Message */}
-          {successMessage && (
-            <div
-              className={`w-full p-4 rounded-lg mb-6 text-center transition-colors duration-300 ${
-                isDarkMode
-                  ? "bg-green-900 bg-opacity-20 text-green-200 border border-green-800"
-                  : "bg-green-100 text-green-700 border border-green-200"
-              }`}
-            >
-              {successMessage}
-            </div>
-          )}
+              <div className="relative bg-[var(--bg)]/95 backdrop-blur-lg border border-[var(--border)]/30 rounded-xl p-3 sm:p-4 md:p-5 shadow-lg transform transition-all duration-500 hover:shadow-xl">
+                {/* زوايا حلوة */}
+                <div className="absolute top-0 right-0 w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 border-t border-r border-[var(--button)] rounded-tr-xl"></div>
+                <div className="absolute bottom-0 left-0 w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 border-b border-l border-[var(--primary)] rounded-bl-xl"></div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Company Name Field */}
-            <div className="flex flex-col w-full">
-              <label
-                className={`mb-2 font-medium transition-colors duration-300
-                ${isDarkMode ? "text-[var(--text)]" : "text-[var(--text)]"}`}
-              >
-                Company Name
-              </label>
-              <div className="relative">
-                <div
-                  className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-500
-                  ${
-                    isDarkMode
-                      ? "text-[var(--mid-dark)]"
-                      : "text-[var(--light-gray)]"
-                  }`}
+                <form
+                  onSubmit={handleSubmit(onSubmit)}
+                  className="relative space-y-3"
                 >
-                  <FaIndustry className="text-lg" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Your company name"
-                  {...register("company_name", {
-                    required: "Company name is required",
-                  })}
-                  className={`w-full border pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-all duration-300
-                    ${
-                      isDarkMode
-                        ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                        : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                    }`}
-                />
-              </div>
-              <div className="h-5 mt-1">
-                {errors.company_name && (
-                  <p
-                    className={`text-sm transition-colors duration-300 ${
-                      isDarkMode ? "text-[var(--error)]" : "text-[var(--error)]"
-                    }`}
-                  >
-                    {errors.company_name.message}
-                  </p>
-                )}
-              </div>
-            </div>
+                  {/* success / error */}
+                  {successMessage && (
+                    <div className="p-2 rounded-lg text-center font-semibold bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/30 flex items-center justify-center gap-2">
+                      <FiUserCheck className="text-xs" />
+                      <span className="text-xs">{successMessage}</span>
+                    </div>
+                  )}
 
-            {/* Contact Person Field */}
-            <div className="flex flex-col w-full">
-              <label
-                className={`mb-2 font-medium transition-colors duration-300
-                ${isDarkMode ? "text-[var(--text)]" : "text-[var(--text)]"}`}
-              >
-                Contact Person
-              </label>
-              <div className="relative">
-                <div
-                  className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-500
-                  ${
-                    isDarkMode
-                      ? "text-[var(--mid-dark)]"
-                      : "text-[var(--light-gray)]"
-                  }`}
-                >
-                  <FaUser className="text-lg" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Full name"
-                  {...register("contact_person", {
-                    required: "Contact person is required",
-                  })}
-                  className={`w-full border pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-all duration-300
-                    ${
-                      isDarkMode
-                        ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                        : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                    }`}
-                />
-              </div>
-              <div className="h-5 mt-1">
-                {errors.contact_person && (
-                  <p
-                    className={`text-sm transition-colors duration-300 ${
-                      isDarkMode ? "text-[var(--error)]" : "text-[var(--error)]"
-                    }`}
-                  >
-                    {errors.contact_person.message}
-                  </p>
-                )}
-              </div>
-            </div>
+                  {error && (
+                    <div className="p-2 rounded-lg text-center font-semibold bg-[var(--error)]/20 text-[var(--error)] border border-[var(--error)]/30 flex items-center justify-center gap-2">
+                      <MdSecurity className="text-xs" />
+                      <span className="text-xs">{error}</span>
+                    </div>
+                  )}
 
-            {/* Email Field */}
-            <div className="flex flex-col w-full">
-              <label
-                className={`mb-2 font-medium transition-colors duration-300
-                ${isDarkMode ? "text-[var(--text)]" : "text-[var(--text)]"}`}
-              >
-                Email Address
-              </label>
-              <div className="relative">
-                <div
-                  className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-500
-                  ${
-                    isDarkMode
-                      ? "text-[var(--mid-dark)]"
-                      : "text-[var(--light-gray)]"
-                  }`}
-                >
-                  <MdEmail className="text-xl" />
-                </div>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  {...register("email", {
-                    required: "Email is required",
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: "Invalid email address",
-                    },
-                  })}
-                  className={`w-full border pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-all duration-300
-                    ${
-                      isDarkMode
-                        ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                        : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                    }`}
-                />
-              </div>
-              <div className="h-5 mt-1">
-                {errors.email && (
-                  <p
-                    className={`text-sm transition-colors duration-300 ${
-                      isDarkMode ? "text-[var(--error)]" : "text-[var(--error)]"
-                    }`}
-                  >
-                    {errors.email.message}
-                  </p>
-                )}
-              </div>
-            </div>
+                  {/* صف 1: company + contact */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Company Name */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-[var(--text)]">
+                        Company Name
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                          <FaIndustry className="text-xs text-[var(--light-gray)]" />
+                        </div>
+                        <input
+                          type="text"
+                          {...register("company_name", {
+                            required: "Company name is required",
+                          })}
+                          placeholder="Your company name"
+                          className="w-full bg-[var(--bg)]/50 text-[var(--text)] border border-[var(--border)]/50 rounded-lg pl-7 pr-2 py-2 focus:border-[var(--button)] focus:ring-1 focus:ring-[var(--button)]/10 outline-none transition-all duration-300 text-xs sm:text-sm"
+                        />
+                      </div>
+                      {errors.company_name && (
+                        <p className="text-xs text-[var(--error)] flex gap-1 items-center">
+                          <span>•</span>
+                          {errors.company_name.message}
+                        </p>
+                      )}
+                    </div>
 
-            {/* Password Field */}
-            <div className="flex flex-col w-full">
-              <label
-                className={`mb-2 font-medium transition-colors duration-300
-                ${isDarkMode ? "text-[var(--text)]" : "text-[var(--text)]"}`}
-              >
-                Password
-              </label>
-              <div className="relative">
-                <div
-                  className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-500
-                  ${
-                    isDarkMode
-                      ? "text-[var(--mid-dark)]"
-                      : "text-[var(--light-gray)]"
-                  }`}
-                >
-                  <FaLock className="text-lg" />
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  {...register("password", {
-                    required: "Password is required",
-                    minLength: {
-                      value: 6,
-                      message: "Password must be at least 6 characters",
-                    },
-                  })}
-                  className={`w-full border pl-10 pr-12 py-3 rounded-lg focus:outline-none transition-all duration-300
-                    ${
-                      isDarkMode
-                        ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                        : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                    }`}
-                  autoComplete="new-password"
-                />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setShowPassword((s) => !s)}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    aria-pressed={showPassword}
-                    className={`p-1 rounded-full transition-all duration-300 ${
-                      isDarkMode
-                        ? "text-[var(--mid-dark)] hover:text-[var(--text)] hover:bg-gray-700"
-                        : "text-[var(--light-gray)] hover:text-[var(--text)] hover:bg-gray-100"
-                    }`}
-                  >
-                    {showPassword ? (
-                      <FiEyeOff size={18} />
-                    ) : (
-                      <FiEye size={18} />
+                    {/* Contact Person */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-[var(--text)]">
+                        Contact Person
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                          <FaUser className="text-xs text-[var(--light-gray)]" />
+                        </div>
+                        <input
+                          type="text"
+                          {...register("contact_person", {
+                            required: "Contact person is required",
+                          })}
+                          placeholder="Full name"
+                          className="w-full bg-[var(--bg)]/50 text-[var(--text)] border border-[var(--border)]/50 rounded-lg pl-7 pr-2 py-2 focus:border-[var(--button)] focus:ring-1 focus:ring-[var(--button)]/10 outline-none transition-all duration-300 text-xs sm:text-sm"
+                        />
+                      </div>
+                      {errors.contact_person && (
+                        <p className="text-xs text-[var(--error)] flex gap-1 items-center">
+                          <span>•</span>
+                          {errors.contact_person.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* صف 2: email */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-[var(--text)]">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                        <MdEmail className="text-xs text-[var(--light-gray)]" />
+                      </div>
+                      <input
+                        type="email"
+                        {...register("email", {
+                          required: "Email is required",
+                          pattern: {
+                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                            message: "Invalid email address",
+                          },
+                        })}
+                        placeholder="Email address"
+                        className="w-full bg-[var(--bg)]/50 text-[var(--text)] border border-[var(--border)]/50 rounded-lg pl-7 pr-2 py-2 focus:border-[var(--button)] focus:ring-1 focus:ring-[var(--button)]/10 outline-none transition-all duration-300 text-xs sm:text-sm"
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="text-xs text-[var(--error)] flex gap-1 items-center">
+                        <span>•</span>
+                        {errors.email.message}
+                      </p>
                     )}
-                  </button>
-                </span>
-              </div>
-              <div className="h-5 mt-1">
-                {errors.password && (
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-[var(--text)]">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                        <FaLock className="text-xs text-[var(--light-gray)]" />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        {...register("password", {
+                          required: "Password is required",
+                          minLength: {
+                            value: 6,
+                            message: "Password must be at least 6 characters",
+                          },
+                        })}
+                        placeholder="Password"
+                        className="w-full bg-[var(--bg)]/50 text-[var(--text)] border border-[var(--border)]/50 rounded-lg pl-7 pr-7 py-2 focus:border-[var(--button)] focus:ring-1 focus:ring-[var(--button)]/10 outline-none transition-all duration-300 text-xs sm:text-sm"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => setShowPassword((s) => !s)}
+                        className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-all duration-300 ${
+                          isDark
+                            ? "text-[var(--light-gray)] hover:text-[var(--text)] hover:bg-[var(--border)]/30"
+                            : "text-[var(--light-gray)] hover:text-[var(--text)] hover:bg-gray-100"
+                        }`}
+                      >
+                        {showPassword ? (
+                          <FiEyeOff size={10} />
+                        ) : (
+                          <FiEye size={10} />
+                        )}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <p className="text-xs text-[var(--error)] flex gap-1 items-center">
+                        <span>•</span>
+                        {errors.password.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* صف 3: phone + address */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Phone */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-[var(--text)]">
+                        Phone Number
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                          <FaPhone className="text-xs text-[var(--light-gray)]" />
+                        </div>
+                        <input
+                          type="text"
+                          {...register("phone", {
+                            required: "Phone number is required",
+                          })}
+                          placeholder="Phone number"
+                          className="w-full bg-[var(--bg)]/50 text-[var(--text)] border border-[var(--border)]/50 rounded-lg pl-7 pr-2 py-2 focus:border-[var(--button)] focus:ring-1 focus:ring-[var(--button)]/10 outline-none transition-all duration-300 text-xs sm:text-sm"
+                        />
+                      </div>
+                      {errors.phone && (
+                        <p className="text-xs text-[var(--error)] flex gap-1 items-center">
+                          <span>•</span>
+                          {errors.phone.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Address */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-[var(--text)]">
+                        Company Address
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                          <FaMapMarkerAlt className="text-xs text-[var(--light-gray)]" />
+                        </div>
+                        <input
+                          type="text"
+                          {...register("address", {
+                            required: "Address is required",
+                          })}
+                          placeholder="Company address"
+                          className="w-full bg-[var(--bg)]/50 text-[var(--text)] border border-[var(--border)]/50 rounded-lg pl-7 pr-2 py-2 focus:border-[var(--button)] focus:ring-1 focus:ring-[var(--button)]/10 outline-none transition-all duration-300 text-xs sm:text-sm"
+                        />
+                      </div>
+                      {errors.address && (
+                        <p className="text-xs text-[var(--error)] flex gap-1 items-center">
+                          <span>•</span>
+                          {errors.address.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* زر التسجيل */}
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full relative px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-bold text-white bg-gradient-to-r from-[var(--button)] to-[var(--primary)] border-0 hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none group/btn overflow-hidden text-xs sm:text-sm"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000"></div>
+                      <span className="relative z-10 flex items-center justify-center gap-1">
+                        {loading ? (
+                          <>
+                            <div className="w-2 h-2 sm:w-3 sm:h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Registering...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FaRocket className="w-2 h-2 sm:w-3 sm:h-3" />
+                            <span>Register Delivery</span>
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* عندك حساب؟ */}
                   <p
-                    className={`text-sm transition-colors duration-300 ${
-                      isDarkMode ? "text-[var(--error)]" : "text-[var(--error)]"
+                    className={`text-center transition-colors duration-500 text-xs ${
+                      isDark ? "text-[var(--light-gray)]" : "text-gray-600"
                     }`}
                   >
-                    {errors.password.message}
+                    Already have an account?{" "}
+                    <span
+                      className={`cursor-pointer font-bold transition-all duration-500 ${
+                        isDark
+                          ? "text-[var(--button)] hover:text-purple-400"
+                          : "text-blue-600 hover:text-blue-800"
+                      } hover:underline inline-flex items-center gap-1`}
+                      onClick={() => navigate("/delivery/login")}
+                    >
+                      Login
+                      <FiAward className="w-2 h-2 sm:w-3 sm:h-3" />
+                    </span>
                   </p>
-                )}
+
+                  {/* Privacy & Terms */}
+                  <div
+                    className={`flex justify-center gap-2 text-xs transition-colors duration-500 ${
+                      isDark ? "text-[var(--light-gray)]" : "text-gray-500"
+                    }`}
+                  >
+                    <button
+                      onClick={() => navigate("/privacy-policy")}
+                      className={`transition-all duration-300 hover:scale-105 flex items-center gap-1 ${
+                        isDark
+                          ? "hover:text-[var(--button)]"
+                          : "hover:text-blue-600"
+                      }`}
+                    >
+                      <MdPrivacyTip className="w-2 h-2 sm:w-3 sm:h-3" />
+                      Privacy
+                    </button>
+                    <span
+                      className={
+                        isDark ? "text-[var(--border)]" : "text-gray-300"
+                      }
+                    >
+                      •
+                    </span>
+                    <button
+                      onClick={() => navigate("/terms-of-service")}
+                      className={`transition-all duration-300 hover:scale-105 flex items-center gap-1 ${
+                        isDark
+                          ? "hover:text-[var(--button)]"
+                          : "hover:text-blue-600"
+                      }`}
+                    >
+                      <FiShield className="w-2 h-2 sm:w-3 sm:h-3" />
+                      Terms
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
-
-            {/* Phone Field */}
-            <div className="flex flex-col w-full">
-              <label
-                className={`mb-2 font-medium transition-colors duration-300
-                ${isDarkMode ? "text-[var(--text)]" : "text-[var(--text)]"}`}
-              >
-                Phone Number
-              </label>
-              <div className="relative">
-                <div
-                  className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-500
-                  ${
-                    isDarkMode
-                      ? "text-[var(--mid-dark)]"
-                      : "text-[var(--light-gray)]"
-                  }`}
-                >
-                  <FaPhone className="text-lg" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Phone number"
-                  {...register("phone", {
-                    required: "Phone number is required",
-                  })}
-                  className={`w-full border pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-all duration-300
-                    ${
-                      isDarkMode
-                        ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                        : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                    }`}
-                />
-              </div>
-              <div className="h-5 mt-1">
-                {errors.phone && (
-                  <p
-                    className={`text-sm transition-colors duration-300 ${
-                      isDarkMode ? "text-[var(--error)]" : "text-[var(--error)]"
-                    }`}
-                  >
-                    {errors.phone.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Address Field */}
-            <div className="flex flex-col w-full">
-              <label
-                className={`mb-2 font-medium transition-colors duration-300
-                ${isDarkMode ? "text-[var(--text)]" : "text-[var(--text)]"}`}
-              >
-                Company Address
-              </label>
-              <div className="relative">
-                <div
-                  className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-500
-                  ${
-                    isDarkMode
-                      ? "text-[var(--mid-dark)]"
-                      : "text-[var(--light-gray)]"
-                  }`}
-                >
-                  <FaMapMarkerAlt className="text-lg" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Company address"
-                  {...register("address", { required: "Address is required" })}
-                  className={`w-full border pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-all duration-300
-                    ${
-                      isDarkMode
-                        ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                        : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                    }`}
-                />
-              </div>
-              <div className="h-5 mt-1">
-                {errors.address && (
-                  <p
-                    className={`text-sm transition-colors duration-300 ${
-                      isDarkMode ? "text-[var(--error)]" : "text-[var(--error)]"
-                    }`}
-                  >
-                    {errors.address.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Register Button */}
-            <button
-              type="submit"
-              disabled={loading || isSubmitting}
-              className={`w-full p-3 rounded-lg font-semibold transition-all duration-300 relative
-                bg-[var(--button)] text-white 
-                hover:bg-[var(--button)] hover:text-white 
-                hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] 
-                disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed disabled:shadow-none`}
-            >
-              {loading || isSubmitting ? (
-                <span className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Registering...
-                </span>
-              ) : (
-                "Register"
-              )}
-            </button>
-          </form>
-
-          {/* Login Link */}
-          <p
-            className={`text-center transition-colors duration-300 p-3 ${
-              isDarkMode
-                ? "text-[var(--light-gray)]"
-                : "text-[var(--light-gray)]"
-            }`}
-          >
-            Already have an account?{" "}
-            <span
-              className={`cursor-pointer font-medium transition-colors duration-300 ${
-                isDarkMode
-                  ? "text-[var(--primary)] hover:text-[var(--primary)]"
-                  : "text-[var(--primary)] hover:text-[var(--primary)]"
-              } hover:underline`}
-              onClick={() => navigate("/delivery/login")}
-            >
-              Login
-            </span>
-          </p>
+          </div>
         </div>
       </div>
 
-      {/* Right Section - Welcome */}
-      <div
-        className={`hidden lg:flex w-1/2 flex-col justify-center items-center p-12 transition-colors duration-500
-        ${
-          isDarkMode
-            ? "bg-[var(--mid-dark)] text-[var(--textbox)]"
-            : "bg-[var(--textbox)] text-[var(--mid-dark)]"
-        }`}
-      >
-        <div className="text-center max-w-lg">
-          <img
-            src={isDarkMode ? "/LogoDark.png" : "/logo.png"}
-            alt="Qwikko Logo"
-            className="h-35 w-90 mb-8 mx-auto transition-all duration-500"
-          />
-
-          <p className="text-xl mb-8 leading-relaxed">
-            Join our delivery network and grow your business! Register your
-            company to start receiving delivery requests and expand your reach
-            across multiple vendors and customers.
-          </p>
-        </div>
-      </div>
+      {/* نفس الأنيميشنات */}
+      <style jsx>{`
+        @keyframes gradient-x {
+          0%,
+          100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-10px) rotate(2deg);
+          }
+        }
+        @keyframes float-slow {
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px);
+          }
+          33% {
+            transform: translateY(-15px) translateX(5px);
+          }
+          66% {
+            transform: translateY(10px) translateX(-5px);
+          }
+        }
+        @keyframes pulse-slow {
+          0%,
+          100% {
+            opacity: 0.05;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.15;
+            transform: scale(1.02);
+          }
+        }
+        .animate-gradient-x {
+          background-size: 200% 200%;
+          animation: gradient-x 3s ease infinite;
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        .animate-float-slow {
+          animation: float-slow 8s ease-in-out infinite;
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 6s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };

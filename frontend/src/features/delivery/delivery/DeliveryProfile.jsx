@@ -1,12 +1,53 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil, Plus } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  MapPin,
+  Building,
+  User,
+  Mail,
+  Phone,
+} from "lucide-react";
 import {
   fetchDeliveryProfile,
   fetchCoverageAreas,
   addCoverage,
 } from "./Api/DeliveryAPI";
 import { useSelector } from "react-redux";
+
+/* ======== endpoint delete هنا ======== */
+const API_BASE =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env?.VITE_API_BASE?.replace(/\/+$/, "")) ||
+  "http://localhost:3000/api/delivery";
+
+async function deleteCoverageCity(token, city) {
+  const url = `${API_BASE}/coverage`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ areas: [city] }),
+  });
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = { _raw: await res.text() };
+  }
+
+  if (!res.ok) {
+    const msg =
+      data?.message || data?.error || `Failed to delete city: ${city}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+/* ===================================== */
 
 const ALLOWED_AREAS = [
   "Amman",
@@ -35,11 +76,11 @@ export default function DeliveryProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [selectedAreas, setSelectedAreas] = useState([]);
+  const [selectedAreas, setSelectedAreas] = useState([]); // اللي بالمودال
   const [saving, setSaving] = useState(false);
 
   const navigate = useNavigate();
-  const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
+  const isDark = useSelector((state) => state.deliveryTheme.darkMode);
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,22 +104,63 @@ export default function DeliveryProfile() {
     loadData();
   }, []);
 
-  const handleSaveCoverage = async () => {
+  // فتح المودال: خذ نسخة من اللي عندنا بالسيرفر
+  const openModal = () => {
+    setSelectedAreas(coverage);
+    setShowModal(true);
+  };
+
+  // Cancel: رجّع مثل قبل
+  const handleCancel = () => {
+    setSelectedAreas(coverage);
+    setShowModal(false);
+  };
+
+  // Save: شوف شو انضاف وشو انحذف
+  const handleModalSave = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    // اللي كان موجود فعلاً
+    const before = new Set(coverage);
+    // اللي المستخدم اختاره بالمودال
+    const after = new Set(selectedAreas);
+
+    // اللي لازم ينضاف
+    const toAdd = [...after].filter((city) => !before.has(city));
+    // اللي لازم ينحذف
+    const toDelete = [...before].filter((city) => !after.has(city));
+
+    if (toAdd.length === 0 && toDelete.length === 0) {
+      // ما في تغيير
+      setShowModal(false);
+      return;
+    }
+
+    setSaving(true);
     try {
-      const token = localStorage.getItem("token");
-      const uniqueCities = Array.from(new Set(selectedAreas));
-      if (uniqueCities.length === 0) return;
+      // add
+      if (toAdd.length > 0) {
+        await addCoverage(token, toAdd);
+      }
 
-      setSaving(true);
-      await addCoverage(token, uniqueCities);
+      // delete
+      if (toDelete.length > 0) {
+        // endpoint تبعك بحذف مدينة وحدة، فنمشي عليهم وحده وحده
+        for (const city of toDelete) {
+          await deleteCoverageCity(token, city);
+        }
+      }
 
-      const updatedCoverage = await fetchCoverageAreas(token);
-      setCoverage(normalizeCoverage(updatedCoverage));
-
-      setSelectedAreas([]);
+      // رجّع البيانات الجديدة من السيرفر
+      const updated = await fetchCoverageAreas(token);
+      const norm = normalizeCoverage(updated);
+      setCoverage(norm);
+      setSelectedAreas(norm);
       setShowModal(false);
     } catch (err) {
-      console.error("Failed to add coverage", err);
+      console.error("Failed to save coverage changes", err);
+      // لو بدك مبروزة error هون حط state
     } finally {
       setSaving(false);
     }
@@ -86,10 +168,16 @@ export default function DeliveryProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--bg)" }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--button)] mx-auto mb-4"></div>
-          <p className="text-[var(--text)] text-lg">Loading Profile...</p>
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+            style={{ borderColor: "var(--button)" }}
+          ></div>
+          <p style={{ color: "var(--text)" }}>Loading profile...</p>
         </div>
       </div>
     );
@@ -97,37 +185,103 @@ export default function DeliveryProfile() {
 
   if (error)
     return (
-      <p
-        className="no-anim text-center mt-10"
-        style={{ color: "var(--error)" }}
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--bg)" }}
       >
-        {error}
-      </p>
+        <div className="text-center">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: "var(--error)", opacity: 0.2 }}
+          >
+            <span style={{ color: "var(--error)" }} className="text-2xl">
+              !
+            </span>
+          </div>
+          <p style={{ color: "var(--error)" }}>Error: {error}</p>
+        </div>
+      </div>
     );
 
   if (!company)
     return (
-      <p className="no-anim text-center mt-10" style={{ color: "var(--text)" }}>
-        No company data.
-      </p>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--bg)" }}
+      >
+        <div className="text-center">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: "var(--div)" }}
+          >
+            <span style={{ color: "var(--text)" }} className="text-2xl">
+              🏢
+            </span>
+          </div>
+          <p style={{ color: "var(--text)" }}>Company not found</p>
+        </div>
+      </div>
     );
 
-  const title = "My Profile";
-
   return (
-    <div className={`${isDarkMode ? "dark" : ""} no-anim`}>
-      <div
-        className="min-h-screen pb-[calc(env(safe-area-inset-bottom,0px)+12px)]"
-        style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
-      >
+    <div
+      className="min-h-screen transition-colors duration-300"
+      style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
+    >
+      <div className="max-w-6xl mx-auto px-6 py-12">
         {/* Header */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 flex items-center justify-between gap-4">
-          <h1
-            className="mt-10 text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight"
-            style={{ color: "var(--text)" }}
-          >
-            {title}
-          </h1>
+        <header className="flex flex-col md:flex-row items-center justify-between mb-12 pt-10">
+          <div className="flex items-center gap-6 mb-6 md:mb-0">
+            <div className="relative">
+              <div
+                className="w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-2xl"
+                style={{
+                  background: "linear-gradient(135deg, var(--button), #02966a)",
+                }}
+              >
+                {company.company_name?.charAt(0)?.toUpperCase() || "D"}
+              </div>
+              <div
+                className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4`}
+                style={{
+                  borderColor: "var(--bg)",
+                  backgroundColor:
+                    company.status === "approved" ? "#10B981" : "#F59E0B",
+                }}
+              ></div>
+            </div>
+            <div>
+              <h1
+                className="text-4xl font-bold"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--text), var(--button))",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                {company.company_name}
+              </h1>
+              <p className="text-lg mt-2" style={{ color: "var(--text)" }}>
+                {company.user_email}
+              </p>
+              <div className="flex items-center gap-2 mt-3">
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor:
+                      company.status === "approved" ? "#10B981" : "#F59E0B",
+                  }}
+                ></div>
+                <span
+                  className="text-sm capitalize"
+                  style={{ color: "var(--text)" }}
+                >
+                  {company.status}
+                </span>
+              </div>
+            </div>
+          </div>
 
           <button
             onClick={() =>
@@ -135,227 +289,381 @@ export default function DeliveryProfile() {
                 state: { company, coverageAreas: coverage },
               })
             }
-            className="mt-10 flex items-center gap-2 px-4 sm:px-5 py-2 rounded-lg font-medium shrink-0"
-            style={{ backgroundColor: "var(--button)", color: "#fff" }}
+            className="text-white font-semibold px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center gap-2"
+            style={{ backgroundColor: "var(--button)" }}
+            onMouseOver={(e) => (e.target.style.backgroundColor = "#015c40")}
+            onMouseOut={(e) =>
+              (e.target.style.backgroundColor = "var(--button)")
+            }
           >
             <Pencil size={18} />
-            <span className="text-sm sm:text-base">Edit Profile</span>
+            Edit Profile
           </button>
-        </div>
+        </header>
 
-        {/* Cards Wrapper */}
-        <div
-          className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pb-6"
-          // outer background kept transparent; inner cards handle contrast
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            {/* Delivery Info */}
-            <section className="h-full flex flex-col">
-              <div className="mb-3">
-                <span
-                  className="text-xs sm:text-sm font-semibold uppercase tracking-wider px-3 py-1 rounded-full"
-                  style={{
-                    backgroundColor: "var(--bg)",
-                    color: isDarkMode ? "#ffffff" : "#292e2c",
-                    border: `1px solid var(--border)`,
-                  }}
-                >
-                  Delivery Info
-                </span>
-              </div>
-
-              <div
-                className="p-4 sm:p-6 rounded-2xl flex-1"
-                style={{
-                  backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
-                  color: "var(--text)",
-                  border: `1px solid var(--border)`,
-                }}
-              >
-                <div className="space-y-3">
-                  <div>
-                    <span className="font-semibold">Company Name: </span>
-                    <span>{company.company_name}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Status:</span>
-                    <span
-                      className="px-2 py-1 rounded-full text-xs sm:text-sm font-semibold"
-                      style={{
-                        backgroundColor:
-                          company.status === "approved"
-                            ? "var(--success)"
-                            : "var(--warning)",
-                        color:
-                          company.status === "approved" ? "#0b3d1b" : "#3d3000",
-                      }}
-                    >
-                      {company.status}
-                    </span>
-                  </div>
-
-                  <div>
-                    <div className="mb-2 font-semibold">Coverage Areas:</div>
-
-                    {coverage.length === 0 ? (
-                      <button
-                        onClick={() => {
-                          setSelectedAreas(coverage);
-                          setShowModal(true);
-                        }}
-                        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm"
-                        style={{
-                          backgroundColor: "var(--button)",
-                          color: "#ffffff",
-                        }}
-                      >
-                        <Plus size={18} /> Add Coverage Areas
-                      </button>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {coverage.map((area, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 rounded-2xl text-sm"
-                            style={{
-                              backgroundColor: "var(--bg)",
-                              color: isDarkMode ? "#ffffff" : "#292e2c",
-                              border: `1px solid var(--border)`,
-                            }}
-                          >
-                            {area}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Personal Info */}
-            <section className="h-full flex flex-col">
-              <div className="mb-3">
-                <span
-                  className="text-xs sm:text-sm font-semibold uppercase tracking-wider px-3 py-1 rounded-full"
-                  style={{
-                    backgroundColor: "var(--bg)",
-                    color: isDarkMode ? "#ffffff" : "#292e2c",
-                    border: `1px solid var(--border)`,
-                  }}
-                >
-                  Personal Info
-                </span>
-              </div>
-
-              <div
-                className="p-4 sm:p-6 rounded-2xl flex-1"
-                style={{
-                  backgroundColor: isDarkMode ? "#313131" : "#f5f6f5",
-                  color: "var(--text)",
-                  border: `1px solid var(--border)`,
-                }}
-              >
-                <div className="space-y-3">
-                  <div>
-                    <span className="font-semibold">Name: </span>
-                    <span>{company.user_name || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold">Email: </span>
-                    <span>{company.user_email || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold">Phone: </span>
-                    <span>{company.user_phone || "N/A"}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-        </div>
-
-        {/* Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
+        {/* Company & Coverage Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
+          {/* Company Info Card */}
+          <div className="lg:col-span-3">
             <div
-              className="w-full sm:w-[480px] mx-0 sm:mx-auto rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl"
+              className="border-2 rounded-3xl p-8 shadow-2xl transition-all duration-300 hover:shadow-3xl"
               style={{
-                backgroundColor: "var(--bg)",
-                color: "var(--text)",
-                border: `1px solid var(--border)`,
+                borderColor: "var(--border)",
+                background: isDark
+                  ? "linear-gradient(135deg, var(--div), var(--mid-dark))"
+                  : "linear-gradient(135deg, #ffffff, #f7fafc)",
               }}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Select Coverage Areas"
             >
-              <h2 className="text-xl sm:text-2xl font-bold mb-4">
-                Select Coverage Areas
-              </h2>
-
-              <div
-                className="max-h-[55vh] sm:max-h-60 overflow-y-auto rounded-xl p-3 sm:p-4 grid grid-cols-2 gap-2"
-                style={{ backgroundColor: "var(--bg)" }}
-              >
-                {ALLOWED_AREAS.map((area) => (
-                  <label
-                    key={area}
-                    className="flex items-center gap-2 mb-1 cursor-pointer rounded px-2 py-2 border"
-                    style={{
-                      borderRadius: "12px",
-                      borderColor: "var(--border)",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      value={area}
-                      checked={selectedAreas.includes(area)}
-                      onChange={(e) => {
-                        if (e.target.checked)
-                          setSelectedAreas((prev) => [...prev, area]);
-                        else
-                          setSelectedAreas((prev) =>
-                            prev.filter((a) => a !== area)
-                          );
-                      }}
-                      className="shrink-0"
-                      style={{ accentColor: "var(--button)" }}
-                    />
-                    <span className="text-sm sm:text-base">{area}</span>
-                  </label>
-                ))}
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold flex items-center gap-3">
+                  <Building
+                    className="w-6 h-6"
+                    style={{ color: "var(--button)" }}
+                  />
+                  Company Information
+                </h2>
+                <div
+                  className="w-3 h-3 rounded-full animate-pulse"
+                  style={{ backgroundColor: "var(--button)" }}
+                ></div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-4">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-full"
-                  style={{
-                    backgroundColor: "var(--hover)",
-                    color: isDarkMode ? "#ffffff" : "#292e2c",
-                  }}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleSaveCoverage}
-                  disabled={saving || selectedAreas.length === 0}
-                  className="px-4 py-2 rounded-full text-white shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: "var(--button)",
-                    color: "#ffffff",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  {saving ? "Saving..." : "Save"}
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div className="group">
+                    <p
+                      className="text-sm mb-2 flex items-center gap-2"
+                      style={{ color: "var(--text)" }}
+                    >
+                      <Building className="w-4 h-4" />
+                      Company Name
+                    </p>
+                    <p
+                      className="font-semibold text-lg transition-colors duration-200 group-hover:text-[var(--button)]"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {company.company_name}
+                    </p>
+                  </div>
+                  <div className="group">
+                    <p
+                      className="text-sm mb-2 flex items-center gap-2"
+                      style={{ color: "var(--text)" }}
+                    >
+                      <User className="w-4 h-4" />
+                      Contact Person
+                    </p>
+                    <p
+                      className="font-semibold text-lg transition-colors duration-200 group-hover:text-[var(--button)]"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {company.user_name || "Not provided"}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div className="group">
+                    <p
+                      className="text-sm mb-2 flex items-center gap-2"
+                      style={{ color: "var(--text)" }}
+                    >
+                      <Mail className="w-4 h-4" />
+                      Email Address
+                    </p>
+                    <p
+                      className="font-semibold text-lg transition-colors duration-200 group-hover:text-[var(--button)]"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {company.user_email}
+                    </p>
+                  </div>
+                  <div className="group">
+                    <p
+                      className="text-sm mb-2 flex items-center gap-2"
+                      style={{ color: "var(--text)" }}
+                    >
+                      <Phone className="w-4 h-4" />
+                      Phone Number
+                    </p>
+                    <p
+                      className="font-semibold text-lg transition-colors duration-200 group-hover:text-[var(--button)]"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {company.user_phone || "Not provided"}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        )}
+
+          {/* Status Card */}
+          <div className="lg:col-span-1">
+            <div
+              className="border-2 rounded-3xl p-8 shadow-2xl transition-all duration-300 hover:shadow-3xl"
+              style={{
+                borderColor: "var(--border)",
+                background: "linear-gradient(135deg, var(--button), #02966a)",
+              }}
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      company.status === "approved"
+                        ? "bg-green-400"
+                        : "bg-yellow-400"
+                    }`}
+                  >
+                    <span className="text-white text-sm font-bold">
+                      {company.status === "approved" ? "✓" : "!"}
+                    </span>
+                  </div>
+                </div>
+                <h2 className="text-xl font-bold mb-2 text-white">
+                  Account Status
+                </h2>
+                <div className="text-2xl font-bold text-white mb-4 capitalize">
+                  {company.status}
+                </div>
+                <p className="text-white/80 text-sm">
+                  {company.status === "approved"
+                    ? "Your account is fully active!"
+                    : "Your account is pending approval"}
+                </p>
+                <div className="mt-6 bg-white/20 rounded-full px-4 py-2">
+                  <p className="text-white text-xs font-medium">
+                    {company.status === "approved"
+                      ? " Ready to accept deliveries!"
+                      : " Under review process"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Coverage Areas */}
+        <div className="mb-12">
+          <div className="relative mb-8">
+            <h2
+              className="text-3xl font-bold inline-flex items-center gap-3"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--text), var(--button))",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              <MapPin className="w-8 h-8" style={{ color: "var(--teaxt)" }} />
+              Coverage Areas
+            </h2>
+            <div
+              className="absolute -bottom-2 left-0 w-24 h-1 rounded-full"
+              style={{
+                background:
+                  "linear-gradient(90deg, var(--button), transparent)",
+              }}
+            ></div>
+          </div>
+
+          <section
+            className="border-2 rounded-3xl p-8 shadow-2xl transition-all duration-300 hover:shadow-3xl"
+            style={{
+              borderColor: "var(--border)",
+              background: isDark
+                ? "linear-gradient(135deg, var(--div), var(--mid-dark))"
+                : "linear-gradient(135deg, #ffffff, #f7fafc)",
+            }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3
+                className="text-xl font-semibold flex items-center gap-2"
+                style={{ color: "var(--text)" }}
+              >
+                <MapPin
+                  className="w-5 h-5"
+                  style={{ color: "var(--button)" }}
+                />
+                Service Coverage
+              </h3>
+
+              <button
+                onClick={openModal}
+                className="text-white font-semibold px-6 py-2 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
+                style={{ backgroundColor: "var(--button)" }}
+                onMouseOver={(e) =>
+                  (e.target.style.backgroundColor = "#015c40")
+                }
+                onMouseOut={(e) =>
+                  (e.target.style.backgroundColor = "var(--button)")
+                }
+              >
+                <Plus size={18} />
+                Manage Areas
+              </button>
+            </div>
+
+            {coverage.length === 0 ? (
+              <div className="text-center py-12">
+                <MapPin
+                  className="w-16 h-16 mx-auto mb-4 opacity-50"
+                  style={{ color: "var(--light-gray)" }}
+                />
+                <p
+                  className="text-lg mb-4"
+                  style={{ color: "var(--light-gray)" }}
+                >
+                  No coverage areas added yet
+                </p>
+                <button
+                  onClick={openModal}
+                  className="text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2 mx-auto"
+                  style={{ backgroundColor: "var(--button)" }}
+                  onMouseOver={(e) =>
+                    (e.target.style.backgroundColor = "#015c40")
+                  }
+                  onMouseOut={(e) =>
+                    (e.target.style.backgroundColor = "var(--button)")
+                  }
+                >
+                  <Plus size={18} />
+                  Add Coverage Areas
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {coverage.map((area, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                    style={{
+                      borderColor: "var(--border)",
+                      backgroundColor: "var(--bg)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <MapPin
+                        className="w-4 h-4"
+                        style={{ color: "var(--button)" }}
+                      />
+                      <span
+                        className="font-semibold"
+                        style={{ color: "var(--text)" }}
+                      >
+                        {area}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
+          <div
+            className="w-full max-w-2xl mx-auto rounded-2xl p-6 shadow-2xl border-2"
+            style={{
+              borderColor: "var(--border)",
+              background: isDark
+                ? "linear-gradient(135deg, var(--div), var(--mid-dark))"
+                : "linear-gradient(135deg, #ffffff, #f7fafc)",
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Select Coverage Areas"
+          >
+            <h2
+              className="text-2xl font-bold mb-6 flex items-center gap-2"
+              style={{ color: "var(--text)" }}
+            >
+              <MapPin className="w-6 h-6" style={{ color: "var(--button)" }} />
+              Select Coverage Areas
+            </h2>
+
+            <div
+              className="max-h-60 overflow-y-auto rounded-xl p-4 grid grid-cols-2 gap-3 mb-6 border"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--bg)",
+              }}
+            >
+              {ALLOWED_AREAS.map((area) => (
+                <label
+                  key={area}
+                  className="flex items-center gap-3 p-3 cursor-pointer rounded-xl border transition-all duration-200"
+                  style={{
+                    borderColor: "var(--border)",
+                    backgroundColor: selectedAreas.includes(area)
+                      ? "var(--hover)"
+                      : "transparent",
+                  }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.backgroundColor = "var(--hover)")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                      selectedAreas.includes(area)
+                        ? "var(--hover)"
+                        : "transparent")
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    value={area}
+                    checked={selectedAreas.includes(area)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAreas((prev) => [...prev, area]);
+                      } else {
+                        setSelectedAreas((prev) =>
+                          prev.filter((a) => a !== area)
+                        );
+                      }
+                    }}
+                    className="shrink-0 w-4 h-4"
+                    style={{ accentColor: "var(--button)" }}
+                  />
+                  <span
+                    className="font-medium"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {area}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancel}
+                className="font-semibold px-6 py-2 rounded-xl border-2 transition-all duration-300"
+                style={{
+                  backgroundColor: "var(--div)",
+                  color: "var(--text)",
+                  borderColor: "var(--border)",
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleModalSave}
+                disabled={saving}
+                className="text-white font-semibold px-6 py-2 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
+                style={{ backgroundColor: "var(--button)" }}
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

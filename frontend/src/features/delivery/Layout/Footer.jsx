@@ -1,97 +1,120 @@
-import { FaGithub, FaLinkedin } from "react-icons/fa";
-import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
+// import { FaGithub, FaLinkedin } from "react-icons/fa";
+// import { Link } from "react-router-dom";
+// import { useSelector } from "react-redux";
 
-export default function Footer() {
-  const isDarkMode = useSelector((state) => state.deliveryTheme.darkMode);
+// export default function Footer() {
+//   const themeMode = useSelector((state) => state.customerTheme.mode);
 
-  return (
-    <footer
-      className={`py-6 px-6 border-t transition-colors duration-300 sm:pb-10
-      ${
-        isDarkMode
-          ? "bg-[var(--div)] border-[var(--border)] text-[var(--text)]"
-          : "bg-gradient-to-br from-[var(--button)] to-gray-700 border-[var(--button)] text-white"
-      }`}
-    >
-      <div
-        className="
-        max-w-7xl mx-auto 
-        flex flex-col gap-6
-        sm:flex-row sm:items-center sm:justify-between
-      "
-      >
-        {/* ✅ Logo */}
-        <div className="flex justify-center sm:justify-start">
-          <img src="/darklogo.png" alt="Qwikko Logo" className="h-8 sm:h-9" />
-        </div>
+//   return (
+//     <footer
+//       className={`py-6 px-4 border-t ${
+//         themeMode === "dark"
+//           ? "bg-[var(--div)] border-[var(--border)] text-[var(--text)]"
+//           : "bg-gradient-to-br from-[var(--button)] to-gray-700 border-[var(--button)] text-white"
+//       }`}
+//     >
+//       <div className="max-w-7xl mx-auto flex flex-col items-center gap-4">
+//         {/* Logo */}
+//         <div className="flex items-center">
+//           <img src="/LogoDark.png" alt="Qwikko Logo" className="h-7" />
+//         </div>
 
-        {/* ✅ Links + Text */}
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className="flex flex-col sm:flex-row sm:space-x-8 text-sm mb-1 gap-2">
-            <Link
-              to="/contact"
-              className={`hover:underline transition font-medium ${
-                isDarkMode
-                  ? "hover:text-[var(--primary)]"
-                  : "hover:text-white/80"
-              }`}
-            >
-              Contact Us
-            </Link>
+//         {/* Links and Social Icons in one row */}
+//         <div className="flex flex-wrap justify-center items-center gap-4 text-xs">
+//           <Link
+//             to="/customer/contact"
+//             className={`hover:underline transition-colors duration-200 font-medium ${
+//               themeMode === "dark"
+//                 ? "hover:text-[var(--primary)]"
+//                 : "hover:text-white/80"
+//             }`}
+//           >
+//             Contact
+//           </Link>
+//           <Link
+//             to="/customer/about"
+//             className={`hover:underline transition-colors duration-200 font-medium ${
+//               themeMode === "dark"
+//                 ? "hover:text-[var(--primary)]"
+//                 : "hover:text-white/80"
+//             }`}
+//           >
+//             About
+//           </Link>
+//           <Link
+//             to="/customer/privacy"
+//             className={`hover:underline transition-colors duration-200 font-medium ${
+//               themeMode === "dark"
+//                 ? "hover:text-[var(--primary)]"
+//                 : "hover:text-white/80"
+//             }`}
+//           >
+//             Privacy
+//           </Link>
+//           <Link
+//             to="/customer/terms"
+//             className={`hover:underline transition-colors duration-200 font-medium ${
+//               themeMode === "dark"
+//                 ? "hover:text-[var(--primary)]"
+//                 : "hover:text-white/80"
+//             }`}
+//           >
+//             Terms
+//           </Link>
 
-            <Link
-              to="/about"
-              className={`hover:underline transition font-medium ${
-                isDarkMode
-                  ? "hover:text-[var(--primary)]"
-                  : "hover:text-white/80"
-              }`}
-            >
-              About Us
-            </Link>
-          </div>
+//           {/* Social Icons */}
+//           <div className="flex space-x-2">
+//             <a
+//               href="https://github.com/ThekraQaqish"
+//               target="_blank"
+//               rel="noopener noreferrer"
+//               className={`p-2 rounded-full transition-all duration-200 ${
+//                 themeMode === "dark"
+//                   ? "bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white"
+//                   : "bg-white/20 text-white hover:bg-white hover:text-[var(--button)]"
+//               }`}
+//               aria-label="GitHub"
+//             >
+//               <FaGithub size={14} />
+//             </a>
+//             <a
+//               href="https://www.linkedin.com/in/thekra-qaqish"
+//               target="_blank"
+//               rel="noopener noreferrer"
+//               className={`p-2 rounded-full transition-all duration-200 ${
+//                 themeMode === "dark"
+//                   ? "bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white"
+//                   : "bg-white/20 text-white hover:bg-white hover:text-[var(--button)]"
+//               }`}
+//               aria-label="LinkedIn"
+//             >
+//               <FaLinkedin size={14} />
+//             </a>
+//           </div>
+//         </div>
 
-          <p
-            className={`text-xs ${
-              isDarkMode ? "text-[var(--light-gray)]" : "text-white/80"
-            }`}
-          >
-            © 2025 Qwikko. All rights reserved.
-          </p>
-        </div>
-
-        {/* ✅ Social Icons */}
-        <div className="flex justify-center sm:justify-end space-x-3">
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`p-3 rounded-full transition shadow-sm
-              ${
-                isDarkMode
-                  ? "bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white"
-                  : "bg-white/20 text-white hover:bg-white hover:text-[var(--button)]"
-              }`}
-          >
-            <FaGithub size={20} />
-          </a>
-
-          <a
-            href="https://linkedin.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`p-3 rounded-full transition shadow-sm
-              ${
-                isDarkMode
-                  ? "bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--primary)] hover:text-white"
-                  : "bg-white/20 text-white hover:bg-white hover:text-[var(--button)]"
-              }`}
-          >
-            <FaLinkedin size={20} />
-          </a>
-        </div>
-      </div>
-    </footer>
-  );
-}
+//         {/* Copyright */}
+//         <div className="text-center">
+//           <p
+//             className={`text-xs ${
+//               themeMode === "dark"
+//                 ? "text-[var(--light-gray)]"
+//                 : "text-white/80"
+//             }`}
+//           >
+//             © 2025 Qwikko. All rights reserved.
+//           </p>
+//           <p
+//             className={`text-xs mt-1 ${
+//               themeMode === "dark"
+//                 ? "text-[var(--light-gray)]"
+//                 : "text-white/80"
+//             }`}
+//           >
+//             Made with ❤️ for better shopping
+//           </p>
+//         </div>
+//       </div>
+//     </footer>
+//   );
+// }

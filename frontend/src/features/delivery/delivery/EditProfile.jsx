@@ -496,9 +496,10 @@ export default function EditProfile() {
             className="rounded-lg text-sm font-semibold w-full sm:w-auto"
             style={{
               padding: "10px 14px",
-              backgroundColor: "var(--bg)",
+              backgroundColor: isDarkMode
+                ? "var(--mid-dark)"
+                : "var(--light-gray)",
               color: isDarkMode ? "#ffffff" : "#292e2c",
-              border: `1px solid var(--border)`,
             }}
           >
             Cancel
