@@ -395,7 +395,7 @@ const OrdersPage = () => {
                   (it) => (it.vendor_status || "").toLowerCase() === "rejected"
                 );
               const showDecisionPanel =
-                order.status === "awaiting_customer_decision" && hasRejected;
+                order.status === "needs_decision" && hasRejected;
 
               return (
                 <div
