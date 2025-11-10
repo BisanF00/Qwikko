@@ -156,6 +156,11 @@ exports.handleVendorIntent = async (intent, message, token, userId) => {
         return `📊 Welcome back! Access your main vendor dashboard and performance insights here:\n${frontendUrl}/vendor/dashboard`;
       }
 
+      case "go_to_chat": {
+        const frontendUrl = process.env.FRONTEND_URL;
+        return `💬 You can view and reply to your vendor chats here:\n${frontendUrl}/vendor/chat`;
+      }
+
       default:
         return "";
     }

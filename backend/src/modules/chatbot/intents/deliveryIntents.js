@@ -4,18 +4,22 @@ const axios = require("axios");
 exports.handleDeliveryIntent = async (intent, message, token) => {
   try {
     switch (intent) {
-      case "orders": {
+      case "list_orders": {
+        // ✅ نفس الراوت اللي جربته على Postman
         const res = await axios.get(
-          "http://localhost:3000/api/delivery/orders",
+          "http://localhost:3000/api/customers/delivery/accepted-orders",
           {
             headers: { Authorization: `Bearer ${token || ""}` },
           }
         );
 
-        const orders = res.data.orders || [];
-        if (!orders.length) return "You have no delivery orders currently.";
+        const orders = res.data?.data || [];
 
-        // ✅ فلترة حسب payment status إن وُجد في الرسالة
+        if (!orders.length) {
+          return "You have no delivery orders currently.";
+        }
+
+        // ✅ فلترة حسب payment status لو المستخدم كتبها
         const paymentMatch = message.match(/payment status (is|=)?\s*(\w+)/i);
         if (paymentMatch) {
           const status = paymentMatch[2].toLowerCase();
@@ -23,66 +27,130 @@ exports.handleDeliveryIntent = async (intent, message, token) => {
             (o) => o.payment_status?.toLowerCase() === status
           );
 
-          if (filtered.length === 0)
+          if (!filtered.length) {
             return `You currently have no orders with the payment status "${status}".`;
+          }
 
-          // عرض قائمة الطلبات المطابقة
           let summary = `Here are your orders with payment status "${status}":\n\n`;
           summary += filtered
-            .map(
-              (o) =>
-                `#${o.id} - ${o.status} - $${parseFloat(o.total_amount).toFixed(
-                  2
-                )}`
-            )
+            .map((o) => {
+              const amount = Number(
+                o.total_amount ?? o.final_amount ?? o.total_with_shipping ?? 0
+              ).toFixed(2);
+              return `#${o.id} - ${o.order_status} - $${amount}`;
+            })
             .join("\n");
 
           return summary;
         }
 
-        // ✅ فلترة حسب status إن وُجد (اختياري)
+        // ✅ فلترة حسب order_status
         const statusMatch = message.match(/status (is|=)?\s*([\w\s]+)/i);
         if (statusMatch) {
           const status = statusMatch[2]
             .trim()
             .toLowerCase()
             .replace(/\s+/g, "_");
+
           const filtered = orders.filter(
-            (o) => o.status?.toLowerCase() === status
+            (o) => o.order_status?.toLowerCase() === status
           );
 
-          if (filtered.length === 0)
+          if (!filtered.length) {
             return `You have no orders with status "${status.replace(
               /_/g,
               " "
             )}".`;
+          }
 
           let summary = `Orders with status "${status.replace(
             /_/g,
             " "
           )}":\n\n`;
           summary += filtered
-            .map(
-              (o) =>
-                `#${o.id} - ${o.status} - $${parseFloat(o.total_amount).toFixed(
-                  2
-                )}`
-            )
+            .map((o) => {
+              const amount = Number(
+                o.total_amount ?? o.final_amount ?? o.total_with_shipping ?? 0
+              ).toFixed(2);
+              return `#${o.id} - ${o.order_status} - $${amount}`;
+            })
             .join("\n");
 
           return summary;
         }
 
-        // ✅ العرض الافتراضي لو ما في فلترة
+        // ✅ لو ما في فلترة.. رجّع أوامر الصفحة الأولى
         return (
           "Delivery Orders:\n" +
           orders
-            .map(
-              (o) =>
-                `#${o.id} - ${o.status} - $${parseFloat(o.total_amount).toFixed(
-                  2
-                )}`
-            )
+            .map((o) => {
+              const amount = Number(
+                o.total_amount ?? o.final_amount ?? o.total_with_shipping ?? 0
+              ).toFixed(2);
+              return `#${o.id} - ${o.order_status} - $${amount}`;
+            })
+            .join("\n")
+        );
+      }
+
+      case "list_requested_orders": {
+        const res = await axios.get(
+          "http://localhost:3000/api/customers/delivery/requested-orders",
+          {
+            headers: { Authorization: `Bearer ${token || ""}` },
+          }
+        );
+
+        const orders = res.data?.data || [];
+
+        if (!orders.length) {
+          return "You currently have no requested delivery orders.";
+        }
+
+        const reqStatusMatch = message.match(/status (is|=)?\s*([\w\s]+)/i);
+        if (reqStatusMatch) {
+          const status = reqStatusMatch[2]
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "_");
+
+          const filtered = orders.filter(
+            (o) => o.delivery_request_status?.toLowerCase() === status
+          );
+
+          if (!filtered.length) {
+            return `You have no requested orders with status "${status.replace(
+              /_/g,
+              " "
+            )}".`;
+          }
+
+          let summary = `Requested orders with status "${status.replace(
+            /_/g,
+            " "
+          )}":\n\n`;
+          summary += filtered
+            .map((o) => {
+              const amount = Number(
+                o.total_amount ?? o.final_amount ?? 0
+              ).toFixed(2);
+              return `#${o.id} - request: ${o.delivery_request_status} - order: ${o.order_status} - $${amount}`;
+            })
+            .join("\n");
+
+          return summary;
+        }
+
+        // العرض الافتراضي
+        return (
+          "Requested Delivery Orders:\n" +
+          orders
+            .map((o) => {
+              const amount = Number(
+                o.total_amount ?? o.final_amount ?? 0
+              ).toFixed(2);
+              return `#${o.id} - request: ${o.delivery_request_status} - order: ${o.order_status} - $${amount}`;
+            })
             .join("\n")
         );
       }
@@ -116,12 +184,20 @@ exports.handleDeliveryIntent = async (intent, message, token) => {
             headers: { Authorization: `Bearer ${token || ""}` },
           }
         );
-        const areas = res.data.coverage_areas || [];
-        if (!areas.length) return "You currently have no coverage areas set.";
-        return (
-          "Your coverage areas:\n" +
-          areas.map((a, i) => `${i + 1}. ${a}`).join("\n")
-        );
+
+        // الريسبونس صار Array
+        const rows = Array.isArray(res.data) ? res.data : [];
+        if (!rows.length) {
+          return "You currently have no coverage areas set.";
+        }
+
+        // نجيب المدن بدون تكرار
+        const cities = [...new Set(rows.map((r) => r.city).filter(Boolean))];
+
+        let out = "Your coverage areas:\n";
+        out += cities.map((c, i) => `${i + 1}. ${c}`).join("\n");
+
+        return out;
       }
 
       case "report": {
@@ -233,6 +309,16 @@ exports.handleDeliveryIntent = async (intent, message, token) => {
       case "go_to_edit_profile": {
         const frontendUrl = process.env.FRONTEND_URL;
         return `👤 You can update your personal information and profile details here:\n${frontendUrl}/delivery/dashboard/edit`;
+      }
+
+      case "go_to_chats": {
+        const frontendUrl = process.env.FRONTEND_URL;
+        return `💬 Here are your delivery chats and conversations:\n${frontendUrl}/delivery/dashboard/chat`;
+      }
+
+      case "go_to_requested_orders": {
+        const frontendUrl = process.env.FRONTEND_URL;
+        return `📦 These are the delivery requests waiting for your action:\n${frontendUrl}/delivery/dashboard/DeliveryRequestedOrders`;
       }
 
       default:

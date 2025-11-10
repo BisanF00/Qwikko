@@ -497,7 +497,7 @@ exports.placeOrderFromCart = async function ({
     final_amount += delivery_fee;
 
     // total_with_shipping
-    const total_with_shipping = final_amount;
+    total_with_shipping = final_amount;
 
     console.log("🎯 Final amounts before order creation:", {
       total_amount,
@@ -2062,7 +2062,7 @@ exports.recomputeOrderStatus = async function recomputeOrderStatus(orderId) {
   } else if (c.total > 0 && c.accepted === c.total) {
     newStatus = "requested";
   } else if (c.rejected > 0 && (c.accepted > 0 || c.pending > 0)) {
-    newStatus = "";
+    newStatus = "needs_decision";
     customerActionRequired = true;
   } else {
     // خليها "requested" إذا مافي حالات حاسمة
@@ -2106,7 +2106,7 @@ exports.applyCustomerDecision = async ({ orderId, customerId, action }) => {
     const order = oRows[0];
 
     // لازم يكون بمرحلة انتظار قرار الزبون
-    if ((order.status || "").toLowerCase() !== "awaiting_customer_decision") {
+    if ((order.status || "").toLowerCase() !== "needs_decision") {
       await client.query("ROLLBACK");
       return null;
     }

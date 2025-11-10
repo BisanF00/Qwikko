@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../Layout/Sidebar";
 import Navbar from "../Layout/Navbar";
-import Footer from "../Layout/Footer";
+import Footer from "../../customer/customer/components/Layout/Footer";
 import ChatBot from "../Layout/ChatBot";
 import { setUserFromToken } from "../auth/authSlice";
 import { fetchDeliveryProfile } from "./Api/DeliveryAPI";
@@ -95,50 +95,47 @@ return (
         </button>
 
         {/* نافذة الشات */}
+        {/* نافذة الشات */}
         {isChatOpen && (
           <div
             className="
-      fixed
-      inset-x-0 bottom-0 top-auto
-      md:inset-auto md:top-6 md:right-6
-      w-full md:w-96
-      h-[75vh] sm:h-[80vh] md:h-[85vh]
-      rounded-t-2xl md:rounded-2xl
-      shadow-2xl flex flex-col overflow-hidden
+      fixed bottom-4 right-4
+      w-[350px] h-[510px]
+      rounded-2xl shadow-2xl
+      flex flex-col overflow-hidden
       z-[9999]
     "
             style={{
               backgroundColor: "var(--div)",
               color: "var(--text)",
-              marginBottom: "env(safe-area-inset-bottom, 0px)",
+              border: "1px solid var(--border)",
             }}
           >
+            {/* زر الإغلاق */}
             <button
               onClick={toggleChat}
-              className="absolute top-3 right-3 md:top-4 md:right-4 z-10"
+              className="absolute top-3 right-3 z-10 p-1 rounded-lg hover:bg-red-500/20 transition"
               style={{ color: "var(--light-gray)" }}
               aria-label="Close chatbot"
             >
-              <X size={24} />
+              <X size={20} />
             </button>
 
+            {/* الهيدر */}
             <h2
-              className="text-sm sm:text-base font-semibold flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3"
+              className="text-sm font-semibold flex items-center gap-2 px-4 py-3 pr-10"
               style={{
-                backgroundColor: isDarkMode ? "var(--mid-dark)" : "var(--textbox)",
+                backgroundColor: isDarkMode
+                  ? "var(--mid-dark)"
+                  : "var(--textbox)",
               }}
             >
-              <FaRobot size={22} />
+              <FaRobot size={18} />
               Qwikko Chatbot
             </h2>
 
-            <div
-              className="flex-grow overflow-auto p-2 sm:p-3"
-              style={{
-                backgroundColor: "var(--bg)",
-                overscrollBehavior: "contain",
-              }}
-            >
+            {/* محتوى الشات */}
+            <div className="flex-1 overflow-hidden">
               <ChatBot userId={currentUser?.id || "guest"} />
             </div>
           </div>

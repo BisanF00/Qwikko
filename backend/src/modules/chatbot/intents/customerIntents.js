@@ -93,7 +93,9 @@ exports.handleCustomerIntent = async (intent, message, token) => {
                 const amt = fmtMoney(p.amount);
                 const pm = p.payment_method || "N/A";
                 const st = p.status || "N/A";
-                const tid = p.transaction_id ? ` (TX: ${p.transaction_id})` : "";
+                const tid = p.transaction_id
+                  ? ` (TX: ${p.transaction_id})`
+                  : "";
                 const when = fmtDate(p.created_at);
                 return `• ${pm}: ${amt} — ${st}${tid} on ${when}`;
               })
@@ -208,17 +210,19 @@ exports.handleCustomerIntent = async (intent, message, token) => {
 
           return `🛒 **Available Categories:**\n${formatted}\n\nYou can mention any category name to explore its products.`;
         } catch (err) {
-          console.error("Error fetching categories:", err.response?.data || err);
+          console.error(
+            "Error fetching categories:",
+            err.response?.data || err
+          );
           return "❌ Sorry, I couldn't fetch the categories at the moment.";
         }
       }
 
       // ---------------- VENDORS ----------------
       case "vendors": {
-        const res = await axios.get(
-          "http://localhost:3000/api/vendor/stores",
-          { headers }
-        );
+        const res = await axios.get("http://localhost:3000/api/vendor/stores", {
+          headers,
+        });
         const vendors = res.data.data || [];
         if (!vendors.length) return "No approved vendors found.";
 
@@ -257,9 +261,12 @@ exports.handleCustomerIntent = async (intent, message, token) => {
       case "go_to_wishlist":
         return `💖 Check out your saved products in your wishlist here:\n${frontendUrl}/customer/wishlist`;
 
-      // ---------------- DEFAULT ----------------
+      case "go_to_chat": {
+        return `💬 You can open your conversations and talk to support here:\n${frontendUrl}/customer/chat`;
+      }
+
       default:
-        return ""; // empty => AI will handle generic answer
+        return "";
     }
   } catch (err) {
     console.error("customerIntents error:", err?.response?.data || err.message);
