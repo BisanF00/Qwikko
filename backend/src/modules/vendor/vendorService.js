@@ -278,9 +278,7 @@ exports.getVendorOrderItems = async (userId) => {
 
 //---------------------------------------------
 
-/**
- * يعاد استخدامها داخل ترانزاكشن واحدة
- */
+
 exports.recomputeOrderStatusTx = async (client, orderId) => {
   const q = `
     SELECT
@@ -310,7 +308,7 @@ exports.recomputeOrderStatusTx = async (client, orderId) => {
     customerActionRequired = false;
   } else if (c.rejected > 0 && (c.accepted > 0 || c.pending > 0)) {
     // في رفض + (مقبول أو معلّق) → بدنا قرار من الزبون
-    newStatus = "awaiting_customer_decision";
+    newStatus = "needs_decision";
     customerActionRequired = true;
   } else {
     // إما كلها pending، أو مزيج accepted+pending بدون رفض
@@ -333,7 +331,6 @@ exports.recomputeOrderStatusTx = async (client, orderId) => {
   return up.rows[0];
 };
 
-//---------------------------------------------------------------------------------------------
 
 exports.recomputeOrderStatus = async (orderId) => {
   const client = await pool.connect();

@@ -434,8 +434,8 @@ export default function DeliveryProfile() {
                 <div className="mt-6 bg-white/20 rounded-full px-4 py-2">
                   <p className="text-white text-xs font-medium">
                     {company.status === "approved"
-                      ? "🎉 Ready to accept deliveries!"
-                      : "⏳ Under review process"}
+                      ? " Ready to accept deliveries!"
+                      : " Under review process"}
                   </p>
                 </div>
               </div>

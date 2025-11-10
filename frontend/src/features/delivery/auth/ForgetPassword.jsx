@@ -6,21 +6,30 @@ import { useNavigate } from "react-router-dom";
 import { MdEmail } from "react-icons/md";
 
 const ForgotPassword = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const navigate = useNavigate();
-  const mode = useSelector((state) => state.theme.mode);
-  const isDark = mode === "dark";
+  const isDark = useSelector((state) => state.deliveryTheme.darkMode);
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      const res = await axios.post("http://localhost:3000/api/auth/forgot-password", { email: data.email });
-      
-      localStorage.setItem("resetEmail", data.email);
+      // endpoint تبع الدليفري
+      const res = await axios.post(
+        "http://localhost:3000/api/delivery/auth/forgot-password",
+        { email: data.email }
+      );
+
+      // نخزّن الإيميل تبع الدليفري باسم مختلف
+      localStorage.setItem("deliveryResetEmail", data.email);
 
       setMessage(res.data.message || "Check your email for the reset link!");
       setError("");
@@ -32,43 +41,60 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className={`flex min-h-screen transition-colors duration-500
-      ${isDark ? "bg-[var(--bg)] text-[var(--text)]" : "bg-[var(--bg)] text-[var(--text)]"}`}>
-      
+    <div
+      className={`flex min-h-screen transition-colors duration-500 ${
+        isDark
+          ? "bg-[var(--bg)] text-[var(--text)]"
+          : "bg-[var(--bg)] text-[var(--text)]"
+      }`}
+    >
       {/* Left Section - Forgot Password Form */}
-      <div className={`w-full lg:w-1/2 flex flex-col justify-center items-center p-6 md:p-12 transition-colors duration-500 relative
-        ${isDark ? "bg-[var(--div)]" : "bg-[var(--bg)]"}`}>
-        
+      <div
+        className={`w-full lg:w-1/2 flex flex-col justify-center items-center p-6 md:p-12 transition-colors duration-500 relative ${
+          isDark ? "bg-[var(--div)]" : "bg-[var(--bg)]"
+        }`}
+      >
         {/* Decorative Top Border */}
-        <div className={`absolute top-0 left-0 w-full h-1 transition-colors duration-500
-          ${isDark ? "bg-[var(--button)]" : "bg-[var(--button)]"}`}></div>
-        
+        <div
+          className={`absolute top-0 left-0 w-full h-1 transition-colors duration-500 ${
+            isDark ? "bg-[var(--button)]" : "bg-[var(--button)]"
+          }`}
+        ></div>
+
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
-            <h2 className={`text-3xl font-bold mb-2 transition-colors duration-500`}>
-              Forgot Password
-            </h2>
-            <p className={`text-lg transition-colors duration-500 ${
-              isDark ? "text-[var(--light-gray)]" : "text-[var(--light-gray)]"
-            }`}>
+            <h2 className="text-3xl font-bold mb-2">Forgot Password</h2>
+            <p
+              className={`text-lg ${
+                isDark ? "text-[var(--light-gray)]" : "text-[var(--light-gray)]"
+              }`}
+            >
               Enter your email to reset your password
             </p>
           </div>
 
           {/* Messages */}
           {message && (
-            <div className={`w-full p-4 rounded-lg mb-6 text-center transition-colors duration-300 ${
-              isDark ? "bg-[var(--success)] bg-opacity-20 text-green-200 border border-green-800" : "bg-[var(--success)] bg-opacity-20 text-green-700 border border-green-200"
-            }`}>
+            <div
+              className={`w-full p-4 rounded-lg mb-6 text-center ${
+                isDark
+                  ? "bg-[var(--success)]/20 text-green-200 border border-green-800"
+                  : "bg-[var(--success)]/20 text-green-700 border border-green-200"
+              }`}
+            >
               {message}
             </div>
           )}
 
           {error && (
-            <div className={`w-full p-4 rounded-lg mb-6 text-center transition-colors duration-300 ${
-              isDark ? "bg-red-900 bg-opacity-20 text-red-200 border border-red-800" : "bg-red-100 text-red-700 border border-red-200"
-            }`}>
+            <div
+              className={`w-full p-4 rounded-lg mb-6 text-center ${
+                isDark
+                  ? "bg-red-900/20 text-red-200 border border-red-800"
+                  : "bg-red-100 text-red-700 border border-red-200"
+              }`}
+            >
               {error}
             </div>
           )}
@@ -77,38 +103,47 @@ const ForgotPassword = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Email Field */}
             <div className="flex flex-col w-full">
-              <label className={`mb-2 font-medium transition-colors duration-300
-                ${isDark ? "text-[var(--text)]" : "text-[var(--text)]"}`}>
+              <label
+                className={`mb-2 font-medium ${
+                  isDark ? "text-[var(--text)]" : "text-[var(--text)]"
+                }`}
+              >
                 Email Address
               </label>
               <div className="relative">
-                <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-500
-                  ${isDark ? "text-[var(--mid-dark)]" : "text-[var(--light-gray)]"}`}>
+                <div
+                  className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${
+                    isDark
+                      ? "text-[var(--mid-dark)]"
+                      : "text-[var(--light-gray)]"
+                  }`}
+                >
                   <MdEmail className="text-xl" />
                 </div>
                 <input
                   type="email"
                   placeholder="Enter your email address"
-                  {...register("email", { 
+                  {...register("email", {
                     required: "Email is required",
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: "Invalid email address"
-                    }
+                      message: "Invalid email address",
+                    },
                   })}
-                  className={`w-full border pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-all duration-300
-                    ${
-                      isDark
-                        ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                        : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
-                    }`}
+                  className={`w-full border pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-all duration-300 ${
+                    isDark
+                      ? "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
+                      : "bg-[var(--textbox)] border-[var(--border)] text-[var(--text)] focus:ring-2 focus:ring-[var(--button)] focus:border-transparent"
+                  }`}
                 />
               </div>
               <div className="h-5 mt-1">
                 {errors.email && (
-                  <p className={`text-sm transition-colors duration-300 ${
-                    isDark ? "text-[var(--error)]" : "text-[var(--error)]"
-                  }`}>
+                  <p
+                    className={`text-sm ${
+                      isDark ? "text-[var(--error)]" : "text-[var(--error)]"
+                    }`}
+                  >
                     {errors.email.message}
                   </p>
                 )}
@@ -119,17 +154,29 @@ const ForgotPassword = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full p-3 rounded-lg font-semibold transition-all duration-300 relative
-                bg-[var(--button)] text-white 
-                hover:bg-[var(--button)] hover:text-white 
-                hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] 
-                disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed disabled:shadow-none`}
+              className="w-full p-3 rounded-lg font-semibold bg-[var(--button)] text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Sending Reset Link...
                 </span>
@@ -143,50 +190,63 @@ const ForgotPassword = () => {
           <div className="text-center mt-8">
             <button
               type="button"
-              className={`flex items-center justify-center mx-auto text-sm font-medium transition-all duration-300
-                ${isDark 
-                  ? "text-[var(--primary)] hover:text-[var(--primary)]" 
-                  : "text-[var(--primary)] hover:text-[var(--primary)]"
-                } hover:underline`}
+              className={`flex items-center justify-center mx-auto text-sm font-medium hover:underline ${
+                isDark ? "text-[var(--primary)]" : "text-[var(--primary)]"
+              }`}
               onClick={() => navigate("/delivery/login")}
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
               </svg>
               Back to Login
             </button>
           </div>
 
-          {/* Additional Help */}
-          <div className={`mt-8 p-4 rounded-lg text-center transition-colors duration-300 ${
-            isDark ? "bg-[var(--textbox)]" : "bg-[var(--textbox)]"
-          }`}>
-            <p className={`text-sm transition-colors duration-300 ${
-              isDark ? "text-[var(--light-gray)]" : "text-[var(--light-gray)]"
-            }`}>
+          {/* Extra help */}
+          <div
+            className={`mt-8 p-4 rounded-lg text-center ${
+              isDark ? "bg-[var(--textbox)]" : "bg-[var(--textbox)]"
+            }`}
+          >
+            <p
+              className={`text-sm ${
+                isDark ? "text-[var(--light-gray)]" : "text-[var(--light-gray)]"
+              }`}
+            >
               Can't find the email? Check your spam folder or contact support.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Right Section - Welcome (Same as Login) */}
-      <div className={`hidden lg:flex w-1/2 flex-col justify-center items-center p-12 transition-colors duration-500
-        ${isDark ? "bg-[var(--mid-dark)] text-[var(--text)]" : "bg-[var(--textbox)] text-[var(--text)]"}`}>
-        
+      {/* Right Section - same look as delivery login/register */}
+      <div
+        className={`hidden lg:flex w-1/2 flex-col justify-center items-center p-12 transition-colors duration-500 ${
+          isDark
+            ? "bg-[var(--mid-dark)] text-[var(--text)]"
+            : "bg-[var(--textbox)] text-[var(--text)]"
+        }`}
+      >
         <div className="text-center max-w-lg">
-          <img 
-            src={isDark ? "/LogoDark.png" : "/logo.png"} 
-            alt="Qwikko Logo" 
-            className="h-25 w-80 mb-8 mx-auto transition-all duration-500" 
+          <img
+            src={isDark ? "/LogoDark.png" : "/logo.png"}
+            alt="Qwikko Logo"
+            className="h-25 w-80 mb-8 mx-auto transition-all duration-500"
           />
-          
-          
           <p className="text-xl mb-8 leading-relaxed">
-            Don't worry! We'll send you a link to reset your password and get you back to shopping on Qwikko.
+            Don't worry! We'll send you a link to reset your password so you can
+            get back to managing your deliveries.
           </p>
-          
-          
         </div>
       </div>
     </div>

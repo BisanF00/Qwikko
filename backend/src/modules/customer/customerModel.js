@@ -2062,7 +2062,7 @@ exports.recomputeOrderStatus = async function recomputeOrderStatus(orderId) {
   } else if (c.total > 0 && c.accepted === c.total) {
     newStatus = "requested";
   } else if (c.rejected > 0 && (c.accepted > 0 || c.pending > 0)) {
-    newStatus = "awaiting_customer_decision";
+    newStatus = "needs_decision";
     customerActionRequired = true;
   } else {
     // خليها "requested" إذا مافي حالات حاسمة
