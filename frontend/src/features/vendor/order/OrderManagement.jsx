@@ -415,7 +415,6 @@ export default function OrderManagement() {
         )}
       </div>
 
-      {/* مودال سبب الرفض */}
       {showRejectModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50"

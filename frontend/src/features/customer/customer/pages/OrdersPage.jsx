@@ -26,8 +26,7 @@ const OrdersPage = () => {
   const [imagesLoading, setImagesLoading] = useState(false);
 
   // ----------------------------------------------
-  const [decisionLoading, setDecisionLoading] = useState(false);
-  const [decisionError, setDecisionError] = useState("");
+
 
   // نفس أسلوبك: هيدر التوكن محلي
   const getAuthHeaders = () => {
@@ -38,8 +37,10 @@ const OrdersPage = () => {
     };
   };
 
+    const [decisionLoading, setDecisionLoading] = useState(false);
+    const [decisionError, setDecisionError] = useState("");
   // نداء PATCH لاتخاذ القرار
-  const submitCustomerDecision = async (orderId, action) => {
+   const submitCustomerDecision = async (orderId, action) => {
     setDecisionError("");
     setDecisionLoading(true);
     try {
@@ -57,7 +58,6 @@ const OrdersPage = () => {
         throw new Error(json?.message || "Failed to submit decision");
       }
 
-      // رجّع الأوردارات محدّثة
       dispatch(fetchOrders());
     } catch (err) {
       setDecisionError(err.message || "Server error");
