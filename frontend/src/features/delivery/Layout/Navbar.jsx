@@ -210,8 +210,20 @@ w-[50vw] sm:w-56
                   className="flex items-center gap-3 w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-[var(--hover)]"
                   style={{ color: "var(--text)" }}
                 >
-                  <FiUser  />
+                  <FiUser />
                   <span>View Profile</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigate("/delivery/dashboard/chat");
+                    setIsDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-[var(--hover)]"
+                  style={{ color: "var(--text)" }}
+                >
+                  <FaComments />
+                  <span>Messages</span>
                 </button>
 
                 <button
