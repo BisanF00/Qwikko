@@ -16,6 +16,11 @@ import NotFound from "../../notFound";
 import DeliveryRequestedOrders from "../delivery/DeliveryRequestedOrders";
 import DeliveryAcceptedOrders from "../delivery/DeliveryAcceptedOrders";
 
+import ContactUs from "../../customer/customer/pages/ContactUs";
+import AboutPage from "../../genral/aboutPage/about";
+import PrivacyPolicy from "../../genral/PrivacyPolicy";
+import TermsOfService from "../../genral/TermsOfService";
+
 export default function DeliveryRoutes() {
   return (
     <Routes>
@@ -27,8 +32,14 @@ export default function DeliveryRoutes() {
       <Route path="delivery/dashboard" element={<Dashboard />}>
         <Route index element={<Home />} />
         <Route path="home" element={<Home />} />
-        <Route path="DeliveryRequestedOrders" element={<DeliveryRequestedOrders />} />
-        <Route path="DeliveryAcceptedOrders" element={<DeliveryAcceptedOrders/>} />
+        <Route
+          path="DeliveryRequestedOrders"
+          element={<DeliveryRequestedOrders />}
+        />
+        <Route
+          path="DeliveryAcceptedOrders"
+          element={<DeliveryAcceptedOrders />}
+        />
         <Route path="getProfile" element={<DeliveryProfile />} />
         <Route path="settings" element={<Settings />} />
         <Route path="orders" element={<Orders />} />
@@ -36,6 +47,12 @@ export default function DeliveryRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="edit" element={<EditProfile />} />
         <Route path="chat" element={<Chat />} />
+
+        <Route path="contact" element={<ContactUs />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="privacy" element={<PrivacyPolicy />} />
+        <Route path="terms" element={<TermsOfService />} />
+
         <Route path="*" element={<NotFound />} />
       </Route>
 
