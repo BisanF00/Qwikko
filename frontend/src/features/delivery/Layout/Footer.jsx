@@ -24,7 +24,7 @@ export default function Footer() {
           {/* Links */}
           <div className="flex flex-wrap justify-center items-center gap-4 md:gap-6 text-xs md:text-sm lg:flex-1">
             <Link
-              to="/customer/contact"
+              to="/delivery/dashboard/contact"
               className={`hover:underline transition-colors duration-200 font-medium ${
                 isDark ? "hover:text-[var(--primary)]" : "hover:text-white/80"
               }`}
@@ -32,7 +32,7 @@ export default function Footer() {
               Contact
             </Link>
             <Link
-              to="/customer/about"
+              to="/delivery/dashboard/about"
               className={`hover:underline transition-colors duration-200 font-medium ${
                 isDark ? "hover:text-[var(--primary)]" : "hover:text-white/80"
               }`}
@@ -40,7 +40,7 @@ export default function Footer() {
               About
             </Link>
             <Link
-              to="/customer/privacy"
+              to="/delivery/dashboard/privacy"
               className={`hover:underline transition-colors duration-200 font-medium ${
                 isDark ? "hover:text-[var(--primary)]" : "hover:text-white/80"
               }`}
@@ -48,7 +48,7 @@ export default function Footer() {
               Privacy
             </Link>
             <Link
-              to="/customer/terms"
+              to="/delivery/dashboard/terms"
               className={`hover:underline transition-colors duration-200 font-medium ${
                 isDark ? "hover:text-[var(--primary)]" : "hover:text-white/80"
               }`}
