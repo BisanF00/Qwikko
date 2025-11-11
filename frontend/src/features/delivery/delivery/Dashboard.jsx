@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../Layout/Sidebar";
 import Navbar from "../Layout/Navbar";
-import Footer from "../../customer/customer/components/Layout/Footer";
+import Footer from "../Layout/Footer";
 import ChatBot from "../Layout/ChatBot";
 import { setUserFromToken } from "../auth/authSlice";
 import { fetchDeliveryProfile } from "./Api/DeliveryAPI";
@@ -74,17 +74,16 @@ return (
 
         {/* الفوتر */}
         {!isChatPage && (
-            <div className="relative z-10 mt-auto">
-              <Footer />
-            </div>
-          )}
+          <div className="relative z-10 mt-auto">
+            <Footer />
+          </div>
+        )}
 
         {/* زر الشاتبوت */}
         <button
           onClick={toggleChat}
-          className="fixed right-4 md:right-6 p-4 rounded-full shadow-lg transition flex items-center justify-center z-[9998] md:bottom-6"
+          className="chat-button fixed bottom-8 right-4 md:right-6 p-4 rounded-full shadow-lg transition flex items-center justify-center z-40"
           style={{
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 90px)", // موبايل أعلى شوي
             backgroundColor: "var(--button)",
             color: "#fff",
           }}
@@ -94,7 +93,6 @@ return (
           <FaRobot size={28} />
         </button>
 
-        {/* نافذة الشات */}
         {/* نافذة الشات */}
         {isChatOpen && (
           <div
