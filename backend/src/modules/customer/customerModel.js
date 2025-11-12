@@ -1,4 +1,5 @@
 const pool = require("../../config/db");
+const admin = require("../../infrastructure/firebase");
 const {
   calculateDistanceKm,
   calculateTotalRouteDistance,
@@ -275,7 +276,7 @@ exports.calculateDeliveryPreview = async function (
 exports.placeOrderFromCart = async function ({
   userId,
   cartId,
-  
+
   address,
   addressId,
   paymentMethod,
@@ -294,9 +295,14 @@ exports.placeOrderFromCart = async function ({
     await client.query("BEGIN");
 
     // 1️⃣ Fetch cart items
-    
+
     use_loyalty_points = parseInt(use_loyalty_points) || 0;
-    console.log(" Processing loyalty points (converted):", use_loyalty_points, "Type:", typeof use_loyalty_points);
+    console.log(
+      " Processing loyalty points (converted):",
+      use_loyalty_points,
+      "Type:",
+      typeof use_loyalty_points
+    );
 
     // 1️⃣ جلب عناصر السلة
     const cartItemsResult = await client.query(
@@ -307,7 +313,8 @@ exports.placeOrderFromCart = async function ({
        WHERE ci.cart_id = $1 AND c.user_id = $2`,
       [cartId, userId]
     );
-    if (!cartItemsResult.rows.length) throw new Error("Cart is empty or not found");
+    if (!cartItemsResult.rows.length)
+      throw new Error("Cart is empty or not found");
 
     // 2️⃣ التعامل مع العنوان
     let savedAddress;
@@ -320,7 +327,9 @@ exports.placeOrderFromCart = async function ({
       savedAddress = existingAddress.rows[0];
     } else {
       if (!address.latitude || !address.longitude) {
-        const geo = await geocodeAddress(`${address.address_line1}, ${address.city}`);
+        const geo = await geocodeAddress(
+          `${address.address_line1}, ${address.city}`
+        );
         if (geo) {
           address.latitude = geo.latitude;
           address.longitude = geo.longitude;
@@ -338,26 +347,30 @@ exports.placeOrderFromCart = async function ({
           address.postal_code || "",
           address.country || "Jordan",
           address.latitude || null,
-          address.longitude || null
+          address.longitude || null,
         ]
       );
       savedAddress = addressResult.rows[0];
     }
 
     // 3️⃣ شركات التوصيل المتاحة
-    let deliveryCompanies = (await client.query(
-      `SELECT id, latitude, longitude, company_name
+    let deliveryCompanies = (
+      await client.query(
+        `SELECT id, latitude, longitude, company_name
        FROM delivery_companies
        WHERE EXISTS (
          SELECT 1 FROM unnest(coverage_areas) AS area WHERE LOWER(area) = LOWER($1)
        ) AND status = 'approved'`,
-      [savedAddress.city]
-    )).rows;
+        [savedAddress.city]
+      )
+    ).rows;
 
     if (!deliveryCompanies.length) {
-      const fallback = (await client.query(
-        `SELECT id, latitude, longitude, company_name FROM delivery_companies WHERE status='approved' LIMIT 1`
-      )).rows;
+      const fallback = (
+        await client.query(
+          `SELECT id, latitude, longitude, company_name FROM delivery_companies WHERE status='approved' LIMIT 1`
+        )
+      ).rows;
       if (!fallback.length) throw new Error("No delivery companies available");
       deliveryCompanies = fallback;
     }
@@ -371,7 +384,6 @@ exports.placeOrderFromCart = async function ({
       deliveryCompanies[0].latitude &&
       deliveryCompanies[0].longitude
     ) {
-
       try {
         const distanceUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${deliveryCompanies[0].latitude},${deliveryCompanies[0].longitude}&destinations=${savedAddress.latitude},${savedAddress.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
         const distanceResponse = await axios.get(distanceUrl);
@@ -458,7 +470,7 @@ exports.placeOrderFromCart = async function ({
         }
       }
     } else {
-      console.log("No coupons provided");    
+      console.log("No coupons provided");
     }
 
     // خصم نقاط الولاء
@@ -466,27 +478,38 @@ exports.placeOrderFromCart = async function ({
     if (use_loyalty_points && use_loyalty_points > 0) {
       const loyaltyData = await exports.getPointsByUser(userId);
       console.log("📊 Loyalty data from DB:", loyaltyData);
-      
-      const pointsToUse = Math.min(use_loyalty_points, loyaltyData.points_balance);
-      console.log("📊 Points to use:", pointsToUse, "Available:", loyaltyData.points_balance);
-      
 
-      
+      const pointsToUse = Math.min(
+        use_loyalty_points,
+        loyaltyData.points_balance
+      );
+      console.log(
+        "📊 Points to use:",
+        pointsToUse,
+        "Available:",
+        loyaltyData.points_balance
+      );
+
       if (pointsToUse > 0) {
         const discountPercent = Math.min((pointsToUse / 100) * 10, 50);
-        discount_from_points = parseFloat(((total_amount * discountPercent) / 100).toFixed(2));
+        discount_from_points = parseFloat(
+          ((total_amount * discountPercent) / 100).toFixed(2)
+        );
         points_used = pointsToUse;
         final_amount -= discount_from_points;
-        
+
         console.log("✅ Points discount applied:", {
           total_amount,
           pointsToUse,
-          discountPercent: discountPercent + '%',
+          discountPercent: discountPercent + "%",
           discount_from_points,
-          final_amount_before_shipping: final_amount
+          final_amount_before_shipping: final_amount,
         });
       } else {
-        console.log("❌ Not enough points for discount. Need 100, have:", pointsToUse);
+        console.log(
+          "❌ Not enough points for discount. Need 100, have:",
+          pointsToUse
+        );
       }
     }
 
@@ -505,7 +528,7 @@ exports.placeOrderFromCart = async function ({
       discount_from_points,
       discount_amount_total,
       delivery_fee,
-      final_amount
+      final_amount,
     });
 
     // 6️⃣ إنشاء الأوردر
@@ -525,12 +548,11 @@ exports.placeOrderFromCart = async function ({
         total_amount,
         discount_amount_total,
         final_amount,
-         coupon_code || null,
+        coupon_code || null,
         delivery_fee,
         total_with_shipping,
         payment_status,
         minDistance || null,
-
       ]
     );
 
@@ -541,7 +563,15 @@ exports.placeOrderFromCart = async function ({
       await client.query(
         `INSERT INTO order_items (order_id, product_id, vendor_id, quantity, price, variant, distance_km, vendor_status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')`,
-        [order.id, item.product_id, item.vendor_id, item.quantity, item.price, JSON.stringify(item.variant || {}), minDistance || 0]
+        [
+          order.id,
+          item.product_id,
+          item.vendor_id,
+          item.quantity,
+          item.price,
+          JSON.stringify(item.variant || {}),
+          minDistance || 0,
+        ]
       );
     }
     // طلبات التوصيل
@@ -573,7 +603,6 @@ exports.placeOrderFromCart = async function ({
     }
 
     await client.query("COMMIT");
-
   } catch (err) {
     await client.query("ROLLBACK");
 
@@ -588,21 +617,31 @@ exports.placeOrderFromCart = async function ({
       orderId: order?.id,
       use_loyalty_points,
       points_used,
-      discount_amount_total
+      discount_amount_total,
     });
 
     if (order && use_loyalty_points && points_used > 0) {
       // 🔥 التأكد من وجود نقاط كافية قبل الخصم
       const currentLoyaltyData = await exports.getPointsByUser(userId);
-      console.log("📊 Current points balance before redemption:", currentLoyaltyData.points_balance);
-      
+      console.log(
+        "📊 Current points balance before redemption:",
+        currentLoyaltyData.points_balance
+      );
+
       if (points_used > currentLoyaltyData.points_balance) {
         points_used = currentLoyaltyData.points_balance;
-        console.log("⚠️ Adjusting points used to available balance:", points_used);
+        console.log(
+          "⚠️ Adjusting points used to available balance:",
+          points_used
+        );
       }
-      
+
       if (points_used > 0) {
-        await exports.redeemPointsViaPool(userId, points_used, `Used ${points_used} points for order #${order.id}`);
+        await exports.redeemPointsViaPool(
+          userId,
+          points_used,
+          `Used ${points_used} points for order #${order.id}`
+        );
         console.log("✅ Points redeemed successfully");
       }
     }
@@ -610,15 +649,21 @@ exports.placeOrderFromCart = async function ({
     // تسجيل النقاط المكتسبة
     if (order) {
       // 🔥 استخدام total_amount من order وليس من المتغير المحلي
-      const pointsEarned = Math.floor((parseFloat(order.total_amount) - discount_amount_total) / 10);
+      const pointsEarned = Math.floor(
+        (parseFloat(order.total_amount) - discount_amount_total) / 10
+      );
       console.log("🎯 Calculating points earned:", {
         orderTotal: order.total_amount,
         discountTotal: discount_amount_total,
-        pointsEarned
+        pointsEarned,
       });
-      
+
       if (pointsEarned > 0) {
-        await exports.addPointsViaPool(userId, pointsEarned, `Earned ${pointsEarned} points from order #${order.id}`);
+        await exports.addPointsViaPool(
+          userId,
+          pointsEarned,
+          `Earned ${pointsEarned} points from order #${order.id}`
+        );
         console.log("✅ Points earned added successfully");
       }
     }
@@ -628,8 +673,10 @@ exports.placeOrderFromCart = async function ({
   return order;
 };
 
-
-exports.acceptOrderByDeliveryCompany = async function (orderId, deliveryCompanyId) {
+exports.acceptOrderByDeliveryCompany = async function (
+  orderId,
+  deliveryCompanyId
+) {
   const client = await pool.connect();
 
   try {
@@ -1714,7 +1761,6 @@ exports.getCustomerOrders = async (customer_id) => {
   return result.rows;
 };
 
-
 exports.getVendorProducts = async (vendorId) => {
   const query = `
     SELECT *
@@ -1874,19 +1920,224 @@ exports.paymentModel = {
   },
 };
 
+// exports.deleteProfile = async (req, res) => {
+//   const userId = req.user.id;
+//   try {
+//     await db.query("DELETE FROM users WHERE id = $1", [userId]);
+
+//     res
+//       .status(200)
+//       .json({ message: "User and all related data deleted successfully." });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Failed to delete user." });
+//   }
+// };
+
 exports.deleteProfile = async (req, res) => {
   const userId = req.user.id;
-  try {
-    await db.query("DELETE FROM users WHERE id = $1", [userId]);
 
-    res
-      .status(200)
-      .json({ message: "User and all related data deleted successfully." });
+  console.log("🟣 deleteProfile called for user:", userId);
+
+  const client = await pool.connect();
+
+  const runStep = async (label, query, params = []) => {
+    console.log(`🟡 START STEP: ${label}`);
+    try {
+      const result = await client.query(query, params);
+      console.log(`✅ DONE STEP: ${label}`);
+      return result;
+    } catch (err) {
+      console.error(`❌ FAILED STEP: ${label}`);
+      console.error("👉 Error message:", err.message);
+      throw err;
+    }
+  };
+
+  // هنخزّنها عشان بعد الكوميت نحاول نحذف من فايربيز
+  let firebaseUid = null;
+
+  try {
+    console.log("===== DELETE PROFILE START =====");
+    await client.query("BEGIN");
+
+    // 0) نجيب firebase_uid لو موجود
+    const userRes = await runStep(
+      "get user firebase uid",
+      "SELECT firebase_uid FROM users WHERE id = $1",
+      [userId]
+    );
+    firebaseUid = userRes.rows[0]?.firebase_uid || null;
+    console.log("📌 firebaseUid from DB:", firebaseUid);
+
+    // 0.5) نجيب الفندورات
+    const vendorRowsRes = await runStep(
+      "get user vendors",
+      "SELECT id FROM vendors WHERE user_id = $1",
+      [userId]
+    );
+    const vendorIds = vendorRowsRes.rows.map((r) => r.id);
+    console.log("➡️ vendorIds:", vendorIds);
+
+    // 1) جداول مرتبطة باليوزر
+    await runStep(
+      "delete addresses",
+      "DELETE FROM addresses WHERE user_id = $1",
+      [userId]
+    );
+    await runStep("delete carts", "DELETE FROM carts WHERE user_id = $1", [
+      userId,
+    ]);
+    await runStep(
+      "delete wishlist",
+      "DELETE FROM wishlist WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete notifications",
+      "DELETE FROM notifications WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete loyalty_points",
+      "DELETE FROM loyalty_points WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete ai_recommendations",
+      "DELETE FROM ai_recommendations WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete coupon_usages",
+      "DELETE FROM coupon_usages WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete user_events",
+      "DELETE FROM user_events WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete user_interactions",
+      "DELETE FROM user_interactions WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete product_reviews",
+      "DELETE FROM product_reviews WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete stars_review",
+      "DELETE FROM stars_review WHERE user_id = $1",
+      [userId]
+    );
+
+    // شات
+    await runStep(
+      "delete chat_messages (sender or receiver)",
+      "DELETE FROM chat_messages WHERE sender_id = $1 OR receiver_id = $1",
+      [userId]
+    );
+
+    // 🟣 مهم: امسح order_items التابعة لأوردرات هذا اليوزر
+    await runStep(
+      "delete order_items for user orders",
+      `
+      DELETE FROM order_items
+      WHERE order_id IN (
+        SELECT id FROM orders WHERE customer_id = $1
+      )
+      `,
+      [userId]
+    );
+
+    // بعدين الأوردرز
+    await runStep(
+      "delete orders (as customer)",
+      "DELETE FROM orders WHERE customer_id = $1",
+      [userId]
+    );
+
+    await runStep(
+      "delete payments",
+      "DELETE FROM payments WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete customers",
+      "DELETE FROM customers WHERE user_id = $1",
+      [userId]
+    );
+    await runStep(
+      "delete delivery_companies",
+      "DELETE FROM delivery_companies WHERE user_id = $1",
+      [userId]
+    );
+
+    // 2) لو عنده vendors
+    if (vendorIds.length > 0) {
+      console.log("ℹ️ user has vendors, deleting them");
+
+      // لو عندك products مربوطة بالفندور ومش ON DELETE CASCADE
+      // امسحيها هون قبل الفندور
+
+      await runStep(
+        "delete vendors",
+        "DELETE FROM vendors WHERE user_id = $1",
+        [userId]
+      );
+    } else {
+      console.log(
+        "ℹ️ no vendors for this user, skipping vendor-related deletes"
+      );
+    }
+
+    // 3) احذف من users
+    await runStep("delete user", "DELETE FROM users WHERE id = $1", [userId]);
+
+    // ✅ لو وصلنا لهون الداتابيس تمام
+    await client.query("COMMIT");
+    console.log("===== DELETE PROFILE SUCCESS (DB) =====");
   } catch (err) {
+    console.error("===== DELETE PROFILE FAILED, ROLLBACK =====");
     console.error(err);
-    res.status(500).json({ message: "Failed to delete user." });
+    try {
+      await client.query("ROLLBACK");
+    } catch (rbErr) {
+      console.error("ROLLBACK FAILED:", rbErr.message);
+    }
+    client.release();
+    return res
+      .status(500)
+      .json({ message: "Failed to delete user.", error: err.message });
   }
+
+  // ضروري نفلِت الكلاينت
+  client.release();
+
+  // 👇👇 بعد ما ضمنّا الداتابيس نجرّب الفايربيز، وما نوقف عَ خطأ
+  if (firebaseUid) {
+    console.log("🟡 trying to delete firebase user AFTER COMMIT:", firebaseUid);
+    admin
+      .auth()
+      .deleteUser(firebaseUid)
+      .then(() => {
+        console.log("✅ firebase user deleted (post-commit)");
+      })
+      .catch((e) => {
+        console.error("❌ firebase delete failed (post-commit):", e.message);
+        // ما بنرجع إيرور للفرونت
+      });
+  } else {
+    console.log("ℹ️ no firebase uid for this user, skipping firebase delete");
+  }
+
+  // نرجع جواب للفرونت عادي
+  return res.status(200).json({ message: "User and related data deleted." });
 };
+
 
 /**
  * ============================
@@ -1943,7 +2194,7 @@ exports.removeProductFromWishlist = async (wishlistId) => {
   return { success: true };
 };
 
-exports.getPointsByUser = async function(userId) {
+exports.getPointsByUser = async function (userId) {
   try {
     const result = await pool.query(
       `SELECT points_balance 
@@ -1951,7 +2202,7 @@ exports.getPointsByUser = async function(userId) {
        WHERE user_id = $1`,
       [userId]
     );
-    
+
     if (result.rows.length === 0) {
       // إذا لم يكن للمستخدم سجل، أنشئ واحداً جديداً
       await pool.query(
@@ -1961,17 +2212,17 @@ exports.getPointsByUser = async function(userId) {
       );
       return { points_balance: 0 };
     }
-    
+
     const points_balance = parseInt(result.rows[0].points_balance) || 0;
     console.log("📊 getPointsByUser result:", { userId, points_balance });
-    
+
     return { points_balance };
   } catch (error) {
     console.error("❌ Error in getPointsByUser:", error);
     return { points_balance: 0 };
   }
 };
-exports.addPointsViaPool = async function(userId, points, description) {
+exports.addPointsViaPool = async function (userId, points, description) {
   try {
     // تحديث الرصيد وإضافة للسجل التاريخي
     const result = await pool.query(
@@ -1982,17 +2233,19 @@ exports.addPointsViaPool = async function(userId, points, description) {
        WHERE user_id = $3
        RETURNING *`,
       [
-        points, 
-        JSON.stringify([{
-          type: 'earn',
-          points: points,
-          description: description,
-          date: new Date().toISOString()
-        }]),
-        userId
+        points,
+        JSON.stringify([
+          {
+            type: "earn",
+            points: points,
+            description: description,
+            date: new Date().toISOString(),
+          },
+        ]),
+        userId,
       ]
     );
-    
+
     console.log("✅ Points added:", { userId, points, description });
     return result.rows[0];
   } catch (error) {
@@ -2001,8 +2254,7 @@ exports.addPointsViaPool = async function(userId, points, description) {
   }
 };
 
-
-exports.redeemPointsViaPool = async function(userId, points, description) {
+exports.redeemPointsViaPool = async function (userId, points, description) {
   try {
     // تحديث الرصيد وإضافة للسجل التاريخي
     const result = await pool.query(
@@ -2013,17 +2265,19 @@ exports.redeemPointsViaPool = async function(userId, points, description) {
        WHERE user_id = $3
        RETURNING *`,
       [
-        points, 
-        JSON.stringify([{
-          type: 'redeem',
-          points: -points,
-          description: description,
-          date: new Date().toISOString()
-        }]),
-        userId
+        points,
+        JSON.stringify([
+          {
+            type: "redeem",
+            points: -points,
+            description: description,
+            date: new Date().toISOString(),
+          },
+        ]),
+        userId,
       ]
     );
-    
+
     console.log("✅ Points redeemed:", { userId, points, description });
     return result.rows[0];
   } catch (error) {
@@ -2031,7 +2285,6 @@ exports.redeemPointsViaPool = async function(userId, points, description) {
     throw error;
   }
 };
-
 
 /**
  * يعيد حساب حالة الطلب من آيتماته
@@ -2065,7 +2318,7 @@ exports.recomputeOrderStatus = async function recomputeOrderStatus(orderId) {
     newStatus = "needs_decision";
     customerActionRequired = true;
   } else {
-    // خليها "requested" إذا مافي حالات حاسمة
+    // خليها "" إذا مافي حالات حاسمة
     newStatus = "requested";
   }
 
@@ -2264,6 +2517,3 @@ exports.applyCustomerDecision = async ({ orderId, customerId, action }) => {
     client.release();
   }
 };
-
-
-
