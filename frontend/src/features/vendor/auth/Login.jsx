@@ -152,7 +152,7 @@ export default function VendorLogin() {
                         className="w-full bg-[var(--bg)]/50 text-[var(--text)] border border-[var(--border)]/50 rounded-lg pl-7 pr-2 py-2 focus:border-[var(--button)] focus:ring-1 focus:ring-[var(--button)]/10 outline-none transition-all duration-300 backdrop-blur-sm text-xs sm:text-sm"
                         required
                       />
-                      <MdEmail className="absolute inset-y-0 left-2 flex items-center text-[var(--light-gray)]" />
+                      <MdEmail className="absolute inset-y-0 right-2 mt-3 flex items-center text-[var(--light-gray)]" />
                     </div>
                   </div>
 

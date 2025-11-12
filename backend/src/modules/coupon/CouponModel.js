@@ -97,7 +97,20 @@ exports.updateCoupon = async (couponId, vendorId, updateData) => {
 
   if (fields.length === 0) return null;
 
+  // تحديث تاريخ التعديل
   fields.push(`updated_at = NOW()`);
+
+  // إذا سيتم تفعيل الكوبون الجديد، عطل أي كوبونات نشطة أخرى للبائع
+  if (updateData.is_active === true) {
+    await db.query(
+      `UPDATE coupons 
+       SET is_active = false 
+       WHERE vendor_id = $1 AND id != $2 AND is_active = true`,
+      [vendorId, couponId]
+    );
+  }
+
+  // إضافة المعاملات النهائية للـ WHERE
   values.push(couponId, vendorId);
 
   const query = `
@@ -111,11 +124,14 @@ exports.updateCoupon = async (couponId, vendorId, updateData) => {
   return result.rows[0];
 };
 
+
 /**
  * تفعيل / تعطيل الكوبون
  * يتحقق من valid_to إذا البائع حاول يفعّل كوبون منتهي
+ * ويعطل أي كوبونات نشطة أخرى للبائع إذا تم التفعيل
  */
 exports.toggleCouponStatus = async (couponId, vendorId, isActive) => {
+  // جلب الكوبون للتأكد من وجوده والتحقق من التاريخ
   const couponRes = await db.query(
     "SELECT * FROM coupons WHERE id = $1 AND vendor_id = $2",
     [couponId, vendorId]
@@ -125,6 +141,7 @@ exports.toggleCouponStatus = async (couponId, vendorId, isActive) => {
 
   const coupon = couponRes.rows[0];
 
+  // إذا حاول البائع تفعيل كوبون منتهي
   if (isActive && new Date(coupon.valid_to) < new Date()) {
     return {
       error:
@@ -132,13 +149,28 @@ exports.toggleCouponStatus = async (couponId, vendorId, isActive) => {
     };
   }
 
+  // إذا سيتم تفعيل الكوبون، عطل أي كوبونات نشطة أخرى للبائع
+  if (isActive) {
+    await db.query(
+      `UPDATE coupons
+       SET is_active = false
+       WHERE vendor_id = $1 AND id != $2 AND is_active = true`,
+      [vendorId, couponId]
+    );
+  }
+
+  // تحديث حالة الكوبون الحالي
   const result = await db.query(
-    "UPDATE coupons SET is_active = $1, updated_at = NOW() WHERE id = $2 AND vendor_id = $3 RETURNING *",
+    `UPDATE coupons
+     SET is_active = $1, updated_at = NOW()
+     WHERE id = $2 AND vendor_id = $3
+     RETURNING *`,
     [isActive, couponId, vendorId]
   );
 
   return result.rows[0];
 };
+
 
 /**
  * ✅ Validate coupon and preview discount
