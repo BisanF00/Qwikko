@@ -276,13 +276,14 @@ exports.calculateDeliveryPreview = async function (
 exports.placeOrderFromCart = async function ({
   userId,
   cartId,
-
   address,
   addressId,
   paymentMethod,
   paymentData,
   coupon_code,
   use_loyalty_points = false,
+  total_amount, // ✅ القيمة من الـ frontend
+  calculated_totals // ✅ القيم المحسوبة من الـ frontend
 }) {
   const client = await pool.connect();
   let order = null;
@@ -290,20 +291,14 @@ exports.placeOrderFromCart = async function ({
   let discount_from_points = 0;
   let discount_amount_coupon = 0;
   let discount_amount_total = 0;
-
+ 
   try {
     await client.query("BEGIN");
-
+ 
     // 1️⃣ Fetch cart items
-
     use_loyalty_points = parseInt(use_loyalty_points) || 0;
-    console.log(
-      " Processing loyalty points (converted):",
-      use_loyalty_points,
-      "Type:",
-      typeof use_loyalty_points
-    );
-
+    console.log(" Processing loyalty points (converted):", use_loyalty_points, "Type:", typeof use_loyalty_points);
+ 
     // 1️⃣ جلب عناصر السلة
     const cartItemsResult = await client.query(
       `SELECT ci.product_id, ci.quantity, ci.variant, p.price, p.vendor_id
@@ -313,9 +308,43 @@ exports.placeOrderFromCart = async function ({
        WHERE ci.cart_id = $1 AND c.user_id = $2`,
       [cartId, userId]
     );
-    if (!cartItemsResult.rows.length)
-      throw new Error("Cart is empty or not found");
-
+    if (!cartItemsResult.rows.length) throw new Error("Cart is empty or not found");
+ 
+    // ✅ 🔥🔥🔥 الحل الثالث القوي: تجاهل كل الحسابات واستخدم القيم من الـ frontend 🔥🔥🔥
+    console.log("🎯 OVERRIDING WITH FRONTEND CALCULATIONS");
+    console.log("💰 Received from frontend - total_amount:", total_amount);
+    console.log("💰 Received from frontend - calculated_totals:", calculated_totals);
+ 
+    let final_amount;
+    let delivery_fee = 0.5; // قيمة افتراضية
+ 
+    // 🔥 استخدم القيم من الـ frontend مباشرة
+    if (calculated_totals && calculated_totals.final_total) {
+      // استخدم كل القيم من الـ frontend مباشرة
+      total_amount = Number(calculated_totals.final_total);
+      final_amount = Number(calculated_totals.final_total);
+      delivery_fee = Number(calculated_totals.delivery_fee) || delivery_fee;
+     
+      console.log("🎯 OVERRIDDEN VALUES FROM FRONTEND:", {
+        total_amount,
+        final_amount,
+        delivery_fee,
+        calculated_totals
+      });
+    } else if (total_amount && total_amount > 0) {
+      // استخدم الـ total_amount من الـ frontend
+      final_amount = Number(total_amount);
+      console.log("✅ USING total_amount FROM FRONTEND:", total_amount);
+    } else {
+      // Fallback: حساب من الـ cart items (فقط إذا ما في بيانات من الـ frontend)
+      console.warn("⚠️ No amounts from frontend, calculating from cart...");
+      total_amount = 0;
+      for (let item of cartItemsResult.rows) {
+        total_amount += Number(item.price) * Number(item.quantity);
+      }
+      final_amount = total_amount;
+    }
+ 
     // 2️⃣ التعامل مع العنوان
     let savedAddress;
     if (addressId) {
@@ -327,9 +356,7 @@ exports.placeOrderFromCart = async function ({
       savedAddress = existingAddress.rows[0];
     } else {
       if (!address.latitude || !address.longitude) {
-        const geo = await geocodeAddress(
-          `${address.address_line1}, ${address.city}`
-        );
+        const geo = await geocodeAddress(`${address.address_line1}, ${address.city}`);
         if (geo) {
           address.latitude = geo.latitude;
           address.longitude = geo.longitude;
@@ -347,42 +374,38 @@ exports.placeOrderFromCart = async function ({
           address.postal_code || "",
           address.country || "Jordan",
           address.latitude || null,
-          address.longitude || null,
+          address.longitude || null
         ]
       );
       savedAddress = addressResult.rows[0];
     }
-
+ 
     // 3️⃣ شركات التوصيل المتاحة
-    let deliveryCompanies = (
-      await client.query(
-        `SELECT id, latitude, longitude, company_name
+    let deliveryCompanies = (await client.query(
+      `SELECT id, latitude, longitude, company_name
        FROM delivery_companies
        WHERE EXISTS (
          SELECT 1 FROM unnest(coverage_areas) AS area WHERE LOWER(area) = LOWER($1)
        ) AND status = 'approved'`,
-        [savedAddress.city]
-      )
-    ).rows;
-
+      [savedAddress.city]
+    )).rows;
+ 
     if (!deliveryCompanies.length) {
-      const fallback = (
-        await client.query(
-          `SELECT id, latitude, longitude, company_name FROM delivery_companies WHERE status='approved' LIMIT 1`
-        )
-      ).rows;
+      const fallback = (await client.query(
+        `SELECT id, latitude, longitude, company_name FROM delivery_companies WHERE status='approved' LIMIT 1`
+      )).rows;
       if (!fallback.length) throw new Error("No delivery companies available");
       deliveryCompanies = fallback;
     }
-
-    // 4️⃣ حساب رسوم التوصيل
-    let delivery_fee = 0.5;
+ 
+    // 4️⃣ حساب رسوم التوصيل (فقط إذا ما استخدمنا القيمة من الـ frontend)
     let minDistance = null;
     if (
       savedAddress.latitude &&
       savedAddress.longitude &&
       deliveryCompanies[0].latitude &&
-      deliveryCompanies[0].longitude
+      deliveryCompanies[0].longitude &&
+      (!calculated_totals || !calculated_totals.delivery_fee) // فقط إذا ما في delivery fee من الـ frontend
     ) {
       try {
         const distanceUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${deliveryCompanies[0].latitude},${deliveryCompanies[0].longitude}&destinations=${savedAddress.latitude},${savedAddress.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
@@ -415,45 +438,46 @@ exports.placeOrderFromCart = async function ({
       }
     }
     delivery_fee = parseFloat(delivery_fee.toFixed(2));
-
-    // 5️⃣ حساب المجموع الكلي
-    let total_amount = 0;
-    for (let item of cartItemsResult.rows) {
-      total_amount += Number(item.price) * Number(item.quantity);
-    }
-
-    // let total_with_shipping = total_amount + delivery_fee;
+ 
+    // 🔥 تطبيق الخصومات بناءً على القيم من الـ frontend
     let discount_amount = 0;
-    let final_amount = total_amount;
     let applied_coupons = [];
-
+ 
+    console.log("🎯 Starting amounts from frontend:", {
+      total_amount,
+      delivery_fee,
+      final_amount_before_adjustments: final_amount
+    });
+ 
+    // تطبيق خصم الكوبون (إذا ما كان مطبق مسبقاً في الـ frontend)
     if (Array.isArray(coupon_code) && coupon_code.length > 0) {
       for (const c of coupon_code) {
         const vendor_id = Number(c.vendor_id);
         const coupon_code = c.coupon_code;
         if (!coupon_code) continue;
-
+ 
         const vendorItems = cartItemsResult.rows.filter(
           (i) => Number(i.vendor_id) === vendor_id
         );
-
+ 
         if (vendorItems.length === 0) {
           console.log(
             `No items from vendor ${vendor_id} for coupon ${coupon_code}`
           );
           continue;
         }
-
+ 
         const {
           valid,
           discount_amount: disc,
           message,
         } = await validateCoupon(coupon_code, userId, vendorItems);
-
+ 
         if (valid) {
           const discNum = Number(disc || 0);
           discount_amount += discNum;
           final_amount -= discNum;
+          discount_amount_coupon += discNum;
           applied_coupons.push({
             vendor_id,
             coupon_code,
@@ -470,73 +494,65 @@ exports.placeOrderFromCart = async function ({
         }
       }
     } else {
-      console.log("No coupons provided");
+      console.log("No coupons provided");    
     }
-
+ 
     // خصم نقاط الولاء
     console.log(" Processing loyalty points:", use_loyalty_points);
     if (use_loyalty_points && use_loyalty_points > 0) {
       const loyaltyData = await exports.getPointsByUser(userId);
       console.log("📊 Loyalty data from DB:", loyaltyData);
-
-      const pointsToUse = Math.min(
-        use_loyalty_points,
-        loyaltyData.points_balance
-      );
-      console.log(
-        "📊 Points to use:",
-        pointsToUse,
-        "Available:",
-        loyaltyData.points_balance
-      );
-
+     
+      const pointsToUse = Math.min(use_loyalty_points, loyaltyData.points_balance);
+      console.log("📊 Points to use:", pointsToUse, "Available:", loyaltyData.points_balance);
+     
       if (pointsToUse > 0) {
         const discountPercent = Math.min((pointsToUse / 100) * 10, 50);
-        discount_from_points = parseFloat(
-          ((total_amount * discountPercent) / 100).toFixed(2)
-        );
+        discount_from_points = parseFloat(((total_amount * discountPercent) / 100).toFixed(2));
         points_used = pointsToUse;
         final_amount -= discount_from_points;
-
+       
         console.log("✅ Points discount applied:", {
           total_amount,
           pointsToUse,
-          discountPercent: discountPercent + "%",
+          discountPercent: discountPercent + '%',
           discount_from_points,
-          final_amount_before_shipping: final_amount,
+          final_amount_after_points: final_amount
         });
       } else {
-        console.log(
-          "❌ Not enough points for discount. Need 100, have:",
-          pointsToUse
-        );
+        console.log("❌ Not enough points for discount. Need 100, have:", pointsToUse);
       }
     }
-
+ 
     // إجمالي الخصم = كوبون + نقاط
     discount_amount_total = discount_amount_coupon + discount_from_points;
-
-    // إضافة التوصيل
-    final_amount += delivery_fee;
-
+ 
+    // 🔥 إذا استخدمنا القيم من الـ frontend، ما نحتاج نضيف delivery fee تاني
+    // لأنها بتكون محسوبة مسبقاً في الـ final_total
+    if (!calculated_totals || !calculated_totals.final_total) {
+      // فقط إذا ما استخدمنا القيم من الـ frontend، أضف delivery fee
+      final_amount += delivery_fee;
+    }
+ 
     // total_with_shipping
-    total_with_shipping = final_amount;
-
+    let total_with_shipping = final_amount;
+ 
     console.log("🎯 Final amounts before order creation:", {
-      total_amount,
+      total_amount_from_frontend: total_amount,
       discount_amount_coupon,
       discount_from_points,
       discount_amount_total,
       delivery_fee,
       final_amount,
+      total_with_shipping
     });
-
-    // 6️⃣ إنشاء الأوردر
+ 
+    // 6️⃣ إنشاء الأوردر - استخدام القيم من الـ frontend
     const payment_status = paymentMethod === "cod" ? "pending" : "paid";
     const orderResult = await client.query(
       `INSERT INTO orders (
         customer_id, delivery_company_id, address_id, status, shipping_address,
-        total_amount, discount_amount, final_amount, coupon_code, delivery_fee, 
+        total_amount, discount_amount, final_amount, coupon_code, delivery_fee,
         total_with_shipping, payment_status, distance_km, created_at, updated_at
       ) VALUES ($1,$2,$3,'requested',$4,$5,$6,$7,$8,$9,$10,$11,$12,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       RETURNING *`,
@@ -545,9 +561,9 @@ exports.placeOrderFromCart = async function ({
         deliveryCompanies[0].id,
         savedAddress.id,
         JSON.stringify(savedAddress),
-        total_amount,
+        total_amount, // ✅ استخدام القيمة من الـ frontend
         discount_amount_total,
-        final_amount,
+        final_amount, // ✅ الـ final_amount النهائي
         coupon_code || null,
         delivery_fee,
         total_with_shipping,
@@ -555,23 +571,15 @@ exports.placeOrderFromCart = async function ({
         minDistance || null,
       ]
     );
-
+ 
     order = orderResult.rows[0];
-
+ 
     // حفظ عناصر الطلب
     for (let item of cartItemsResult.rows) {
       await client.query(
         `INSERT INTO order_items (order_id, product_id, vendor_id, quantity, price, variant, distance_km, vendor_status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')`,
-        [
-          order.id,
-          item.product_id,
-          item.vendor_id,
-          item.quantity,
-          item.price,
-          JSON.stringify(item.variant || {}),
-          minDistance || 0,
-        ]
+        [order.id, item.product_id, item.vendor_id, item.quantity, item.price, JSON.stringify(item.variant || {}), minDistance || 0]
       );
     }
     // طلبات التوصيل
@@ -582,7 +590,7 @@ exports.placeOrderFromCart = async function ({
         [order.id, company.id]
       );
     }
-
+ 
     // تسجيل الدفع إذا ليس COD
     if (paymentMethod !== "cod" && paymentData) {
       await client.query(
@@ -601,69 +609,53 @@ exports.placeOrderFromCart = async function ({
         ]
       );
     }
-
+ 
     await client.query("COMMIT");
+ 
   } catch (err) {
     await client.query("ROLLBACK");
-
     throw err;
   } finally {
     client.release();
   }
-
+ 
   // 7️⃣ Post-commit: نقاط الولاء
   try {
     console.log("🔍 Post-commit data:", {
       orderId: order?.id,
       use_loyalty_points,
       points_used,
-      discount_amount_total,
+      discount_amount_total
     });
-
+ 
     if (order && use_loyalty_points && points_used > 0) {
       // 🔥 التأكد من وجود نقاط كافية قبل الخصم
       const currentLoyaltyData = await exports.getPointsByUser(userId);
-      console.log(
-        "📊 Current points balance before redemption:",
-        currentLoyaltyData.points_balance
-      );
-
+      console.log("📊 Current points balance before redemption:", currentLoyaltyData.points_balance);
+     
       if (points_used > currentLoyaltyData.points_balance) {
         points_used = currentLoyaltyData.points_balance;
-        console.log(
-          "⚠️ Adjusting points used to available balance:",
-          points_used
-        );
+        console.log("⚠️ Adjusting points used to available balance:", points_used);
       }
-
+     
       if (points_used > 0) {
-        await exports.redeemPointsViaPool(
-          userId,
-          points_used,
-          `Used ${points_used} points for order #${order.id}`
-        );
+        await exports.redeemPointsViaPool(userId, points_used, `Used ${points_used} points for order #${order.id}`);
         console.log("✅ Points redeemed successfully");
       }
     }
-
+ 
     // تسجيل النقاط المكتسبة
     if (order) {
       // 🔥 استخدام total_amount من order وليس من المتغير المحلي
-      const pointsEarned = Math.floor(
-        (parseFloat(order.total_amount) - discount_amount_total) / 10
-      );
+      const pointsEarned = Math.floor((parseFloat(order.total_amount) - discount_amount_total) / 10);
       console.log("🎯 Calculating points earned:", {
         orderTotal: order.total_amount,
         discountTotal: discount_amount_total,
-        pointsEarned,
+        pointsEarned
       });
-
+     
       if (pointsEarned > 0) {
-        await exports.addPointsViaPool(
-          userId,
-          pointsEarned,
-          `Earned ${pointsEarned} points from order #${order.id}`
-        );
+        await exports.addPointsViaPool(userId, pointsEarned, `Earned ${pointsEarned} points from order #${order.id}`);
         console.log("✅ Points earned added successfully");
       }
     }
@@ -673,10 +665,86 @@ exports.placeOrderFromCart = async function ({
   return order;
 };
 
-exports.acceptOrderByDeliveryCompany = async function (
-  orderId,
-  deliveryCompanyId
-) {
+
+// exports.postOrderFromCart = async function (req, res) {
+//   try {
+//     const userId = req.user.id;
+//     const { 
+//       cart_id, 
+//       address, 
+//       addressId, 
+//       paymentMethod, 
+//       paymentData,
+//       coupon_code,          
+//       use_loyalty_points,
+//       total_amount, // ✅ اضيف هذا
+//       calculated_totals // ✅ واضيف هذا
+//     } = req.body;
+
+//     const parsedCartId = Number(cart_id);
+//     if (!cart_id || Number.isNaN(parsedCartId)) {
+//       return res.status(400).json({ error: "cart_id must be a valid number" });
+//     }
+
+//     if (!addressId && (!address || !address.address_line1 || !address.city)) {
+//       return res.status(400).json({
+//         error: "Please provide a valid address or select a saved address.",
+//       });
+//     }
+
+//     const normalizedPaymentData = paymentData
+//       ? {
+//           transactionId:
+//             paymentData.transactionId || paymentData.transaction_id || null,
+//           card_last4: paymentData.card_last4 || null,
+//           card_brand: paymentData.card_brand || null,
+//           expiry_month: paymentData.expiry_month || null,
+//           expiry_year: paymentData.expiry_year || null,
+//         }
+//       : {};
+
+//     console.log("🔍 [CONTROLLER] Received data:", {
+//       userId,
+//       cartId: parsedCartId,
+//       use_loyalty_points: use_loyalty_points || 0,
+//       coupon_code: coupon_code || null,
+//       total_amount: total_amount, // ✅ تأكد من وصول القيمة
+//       calculated_totals: calculated_totals // ✅ تأكد من وصول التحقق
+//     });
+
+//     const order = await customerModel.placeOrderFromCart({
+//       userId,
+//       cartId: parsedCartId,
+//       address,
+//       addressId,
+//       paymentMethod,
+//       paymentData: normalizedPaymentData,
+//       coupon_code: coupon_code || null,
+//       use_loyalty_points: use_loyalty_points || 0,
+//       total_amount: total_amount, // ✅ ابعت القيمة
+//       calculated_totals: calculated_totals // ✅ ابعت التحقق
+//     });
+
+//     res.status(201).json({
+//       message: `Order placed successfully (${paymentMethod.toUpperCase()})`,
+//       order: {
+//         ...order,
+//         distance_km: order.distance_km,
+//         delivery_fee: order.delivery_fee,
+//         total_with_shipping: order.total_with_shipping,
+//       },
+//     });
+//   } catch (err) {
+//     console.error("Error placing order from cart:", err.message);
+//     console.error("STACK TRACE:", err.stack);
+//     return res
+//       .status(500)
+//       .json({ error: "Failed to place order. Please try again." });
+//   }
+// };
+
+
+exports.acceptOrderByDeliveryCompany = async function (orderId, deliveryCompanyId) {
   const client = await pool.connect();
 
   try {
@@ -805,14 +873,24 @@ exports.getOrderById = async function (customerId, orderId) {
     const result = await pool.query(
       `SELECT 
       o.id AS order_id,
+      o.status, 
       o.total_amount,
+      o.final_amount,
       o.distance_km,
       o.delivery_fee,
       o.total_with_shipping,
-      o.payment_status,
+      o.payment_status,  
       o.shipping_address,
       o.created_at,
       o.updated_at,
+      o.delivery_company_id,
+      o.address_id,
+      o.coupon_id,
+      o.discount_amount,
+      o.coupon_code,
+      o.delivery_time_estimate,
+      o.customer_action_required,
+      o.customer_decision,
       -- العناصر
       json_agg(
         json_build_object(
@@ -874,7 +952,7 @@ exports.getOrderById = async function (customerId, orderId) {
     try {
       const addressRes = await pool.query(
         `SELECT latitude, longitude FROM addresses WHERE id = $1`,
-        [order.shipping_address?.id]
+        [order.address_id]  // ⬅️ استخدام address_id بدلاً من shipping_address.id
       );
       customerCoords = addressRes.rows[0];
       if (customerCoords)
@@ -945,19 +1023,29 @@ exports.getOrderById = async function (customerId, orderId) {
         : []),
     ];
 
-    // 5️⃣ أرجع كل البيانات مع delivery_fee و total_with_shipping من الـ DB مباشرةً
+    // 5️⃣ أرجع كل البيانات مع payment_status والمعلومات الأخرى
     return {
       order_id: order.order_id,
       status: order.status,
+      payment_status: order.payment_status,  
       updated_at: order.updated_at,
+      created_at: order.created_at,
       delivery_fee: order.delivery_fee,
       total_with_shipping: order.total_with_shipping,
-      distance_km: order.distance_km, // اختياري حسب الحاجة
+      distance_km: order.distance_km,
+      total_amount: order.total_amount,
+      final_amount: order.final_amount,
+      discount_amount: order.discount_amount,
+      coupon_code: order.coupon_code,
+      delivery_time_estimate: order.delivery_time_estimate,
+      customer_action_required: order.customer_action_required,
+      customer_decision: order.customer_decision,
       routePoints,
       shipping_address: order.shipping_address,
       customer_location: customerCoords,
       vendors: orderedVendors,
       payments: order.payments || [],
+      items: order.items || []
     };
   } catch (err) {
     console.error("Error in getOrderById:", err);
@@ -1150,7 +1238,13 @@ exports.trackOrder = async function (orderId, customerId) {
         latitude: v.latitude,
         longitude: v.longitude,
       })),
-    };
+      final_amount: order.final_amount,
+      total_with_shipping: order.total_with_shipping,
+      discount_amount_total: order.discount_amount,
+      total_amount: order.total_amount,
+      delivery_fee: order.delivery_fee,
+      payment_status: order.payment_status
+        };
   } catch (err) {
     console.error("Error tracking order:", err);
     return null;
@@ -1766,6 +1860,7 @@ exports.getVendorProducts = async (vendorId) => {
     SELECT *
     FROM products
     WHERE vendor_id = $1
+    AND (is_deleted = false)
     ORDER BY created_at DESC
   `;
   const { rows } = await pool.query(query, [vendorId]);
