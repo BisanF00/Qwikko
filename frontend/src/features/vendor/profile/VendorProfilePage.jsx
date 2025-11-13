@@ -1,26 +1,40 @@
 import React, { useEffect, useState } from "react";
+import { Pencil } from "lucide-react";
 import { fetchVendorProfile, updateVendorProfile } from "../VendorAPI2";
 import Footer from "../../customer/customer/components/layout/Footer";
-const VendorProfilePage = () => {
+
+export default function VendorProfilePage() {
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
   const [tempProfile, setTempProfile] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem("theme") === "dark");
-  const [toast, setToast] = useState(null); // ✅ Toast notification
+  const [toast, setToast] = useState(null);
+
+  const isDark = localStorage.getItem("theme") === "dark";
 
   useEffect(() => {
-    const loadProfile = async () => {
-      const data = await fetchVendorProfile();
-      if (data && data.success) {
-        setProfile(data.data);
-      } else {
-        console.error("Failed to load profile");
+    const loadData = async () => {
+      try {
+        const data = await fetchVendorProfile();
+        if (data && data.success) {
+          setProfile(data.data);
+        } else {
+          throw new Error("Failed to load profile");
+        }
+      } catch (err) {
+        setError(err.message || "Error loading profile");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    loadProfile();
+    loadData();
   }, []);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -37,28 +51,16 @@ const VendorProfilePage = () => {
     reader.readAsDataURL(file);
   };
 
-  const showToast = (message, type = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
   const handleSave = async () => {
-    const updatedData = {
-      store_name: tempProfile.store_name,
-      store_logo: tempProfile.store_logo,
-      description: tempProfile.description,
-      address: tempProfile.address,
-    };
     try {
-      const updated = await updateVendorProfile(updatedData);
+      const updated = await updateVendorProfile(tempProfile);
       if (updated) {
         showToast("Profile updated successfully!", "success");
         setProfile(updated);
         setEditing(false);
       }
     } catch (err) {
-      console.error("Error updating profile:", err);
-      showToast("Something went wrong while updating the profile.", "error");
+      showToast("Failed to update profile", "error");
     }
   };
 
@@ -66,209 +68,286 @@ const VendorProfilePage = () => {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: isDarkMode ? "#242625" : "#f0f2f1" }}
+        style={{ backgroundColor: "var(--bg)" }}
       >
         <div className="text-center">
           <div
             className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
-            style={{ borderColor: "#307A59" }}
+            style={{ borderColor: "var(--button)" }}
           ></div>
-          <p
-            className="text-lg"
-            style={{ color: isDarkMode ? "#ffffff" : "#242625" }}
-          >
-            Loading profile...
-          </p>
+          <p style={{ color: "var(--text)" }}>Loading profile...</p>
         </div>
       </div>
     );
   }
 
-  if (!profile) return <div className="p-6">No profile found.</div>;
+  if (error)
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--bg)" }}
+      >
+        <div className="text-center">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: "var(--error)", opacity: 0.2 }}
+          >
+            <span style={{ color: "var(--error)" }} className="text-2xl">
+              !
+            </span>
+          </div>
+          <p style={{ color: "var(--error)" }}>Error: {error}</p>
+        </div>
+      </div>
+    );
 
-  const pageBg = isDarkMode ? "#242625" : "#ffffff";
-  const cardBg = isDarkMode ? "#313131" : "#ffffff";
-  const textColor = isDarkMode ? "#ffffff" : "#242625";
-  const inputBg = isDarkMode ? "#313131" : "#ffffff";
-  const borderColor = isDarkMode ? "#444" : "#d1d5db";
+  if (!profile)
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--bg)" }}
+      >
+        <div className="text-center">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: "var(--div)" }}
+          >
+            <span style={{ color: "var(--text)" }} className="text-2xl">
+              🏬
+            </span>
+          </div>
+          <p style={{ color: "var(--text)" }}>Vendor not found</p>
+        </div>
+      </div>
+    );
 
   return (
     <div
-      className="flex flex-col min-h-screen w-full relative"
-      style={{ backgroundColor: pageBg, color: textColor }}
+      className="flex flex-col min-h-screen transition-colors duration-300"
+      style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
     >
-      <main className="flex-grow">
-        <div className="max-w-4xl mx-auto mt-18 mb-24">
-          <h1 className="text-2xl font-bold mb-8 text-center sm:text-left" style={{ color: isDarkMode ? "#ffffff" : "#307A59" }}>
-            Vendor Profile
-          </h1>
+      <div className="max-w-6xl mx-auto px-6 py-12 flex-1">
+        {/* Header */}
+        <header className="flex flex-col md:flex-row items-center justify-between mb-12 pt-10">
+          <div className="flex items-center gap-6 mb-6 md:mb-0">
+            <div className="relative">
+              <img
+                src={editing ? tempProfile.store_logo || profile.store_logo : profile.store_logo}
+                alt="Store"
+                className="w-24 h-24 rounded-full object-cover shadow-2xl"
+              />
+              <div
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4"
+                style={{
+                  borderColor: "var(--bg)",
+                  backgroundColor: profile.status === "approved" ? "#10B981" : "#F59E0B",
+                }}
+              ></div>
+            </div>
+            <div>
+              <h1
+                className="text-4xl font-bold"
+                style={{
+                  background: "linear-gradient(135deg, var(--text), var(--button))",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                {profile.store_name}
+              </h1>
+              <p className="text-lg mt-2">{profile.contact_email}</p>
+              <div className="flex items-center gap-2 mt-3">
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: profile.status === "approved" ? "#10B981" : "#F59E0B",
+                  }}
+                ></div>
+                <span className="text-sm capitalize">{profile.status}</span>
+              </div>
+            </div>
+          </div>
 
-          <div
-            className="rounded-2xl p-6 sm:p-10 md:p-12 shadow-md w-full"
-            style={{ backgroundColor: cardBg }}
-          >
-            {!editing ? (
-              <>
-                <div className="flex flex-col items-center space-y-6 text-center">
-                  {profile.store_logo ? (
-                    <img
-                      src={profile.store_logo}
-                      alt="Store"
-                      className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="w-28 h-28 sm:w-32 sm:h-32 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-extrabold"
-                      style={{
-                        backgroundColor: isDarkMode ? "#5f6e68ff" : "#d1d5db",
-                        color: isDarkMode ? "#ffffff" : "#242625",
-                      }}
-                    >
-                      {profile.store_name
-                        ? profile.store_name
-                            .split(" ")
-                            .filter(Boolean)
-                            .slice(0, 2)
-                            .map((word) => word[0].toUpperCase())
-                            .join("")
-                        : "??"}
-                    </div>
-                  )}
+          {!editing && (
+            <button
+              onClick={() => {
+                setEditing(true);
+                setTempProfile({
+                  store_name: profile.store_name,
+                  address: profile.address,
+                  description: profile.description,
+                  store_logo: profile.store_logo,
+               
+                });
+              }}
+              className="text-white font-semibold px-6 py-2 rounded-xl transition-all duration-300 flex items-center gap-2 hover:scale-105 hover:shadow-2xl"
+              style={{ backgroundColor: "var(--button)" }}
+            >
+              <Pencil size={18} /> Edit Profile
+            </button>
+          )}
+        </header>
 
-                  <h2 className="text-lg sm:text-xl font-semibold" style={{ color: textColor }}>
-                    {profile.store_name}
-                  </h2>
-                </div>
+        {/* Info Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
+          {/* Vendor Info */}
+          <div className="lg:col-span-3">
+            <div
+              className="border-2 rounded-3xl p-8 shadow-2xl transition-all duration-300 hover:shadow-3xl"
+              style={{
+                borderColor: "var(--border)",
+                background: isDark
+                  ? "linear-gradient(135deg, var(--div), var(--mid-dark))"
+                  : "linear-gradient(135deg, #ffffff, #f7fafc)",
+              }}
+            >
+              <h2 className="text-2xl font-bold mb-6">Vendor Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+  <p className="font-semibold">Store Name:</p>
+  {editing ? (
+    <input
+      type="text"
+      name="store_name"
+      value={tempProfile.store_name}
+      onChange={handleChange}
+      className="w-full border border-gray-300 rounded-lg p-2"
+    />
+  ) : (
+    <p>{profile.store_name}</p>
+  )}
 
-                <div className="flex flex-col items-center text-center space-y-1 mt-4">
-                  <label className="font-medium" style={{ color: textColor }}>Address</label>
-                  <p className="break-words" style={{ color: textColor }}>{profile.address}</p>
-                </div>
+  <p className="font-semibold">Address:</p>
+  {editing ? (
+    <input
+      type="text"
+      name="address"
+      value={tempProfile.address}
+      onChange={handleChange}
+      className="w-full border border-gray-300 rounded-lg p-2"
+    />
+  ) : (
+    <p>{profile.address}</p>
+  )}
+</div>
 
-                <div className="flex flex-col items-center text-center space-y-1 mt-4">
-                  <label className="font-medium" style={{ color: textColor }}>Description</label>
-                  <p className="break-words" style={{ color: textColor }}>{profile.description}</p>
-                </div>
-
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={() => {
-                      setTempProfile({
-                        store_name: profile.store_name,
-                        address: profile.address,
-                        description: profile.description,
-                        store_logo: profile.store_logo,
-                      });
-                      setEditing(true);
-                    }}
-                    className="px-6 py-2 rounded-lg transition text-sm sm:text-base"
-                    style={{ backgroundColor: "#307A59", color: "#ffffff" }}
-                  >
-                    Edit Profile
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex flex-col items-center space-y-4 text-center">
-                  <img
-                    src={tempProfile.store_logo || "/placeholder.png"}
-                    alt="Store"
-                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover"
-                  />
-                  <input
-                    type="text"
-                    name="store_logo"
-                    value={tempProfile.store_logo || ""}
-                    onChange={handleChange}
-                    placeholder="Enter image URL"
-                    className="p-2 rounded-lg border text-center w-full sm:w-64"
-                    style={{
-                      backgroundColor: inputBg,
-                      color: textColor,
-                      borderColor: borderColor,
-                    }}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-4 mt-4">
-                  <div className="flex flex-col p-3 sm:p-4 rounded-lg" style={{ backgroundColor: inputBg }}>
-                    <label className="font-medium mb-1 text-center" style={{ color: textColor }}>Store Name</label>
-                    <input
-                      type="text"
-                      name="store_name"
-                      value={tempProfile.store_name}
-                      onChange={handleChange}
-                      className="p-2 rounded-lg border focus:ring-2 outline-none text-center text-sm sm:text-base"
-                      style={{ backgroundColor: inputBg, color: textColor, borderColor: borderColor }}
-                    />
-                  </div>
-
-                  <div className="flex flex-col p-3 sm:p-4 rounded-lg" style={{ backgroundColor: inputBg }}>
-                    <label className="font-medium mb-1 text-center" style={{ color: textColor }}>Address</label>
-                    <input
-                      type="text"
-                      name="address"
-                      value={tempProfile.address}
-                      onChange={handleChange}
-                      className="p-2 rounded-lg border focus:ring-2 outline-none text-center text-sm sm:text-base"
-                      style={{ backgroundColor: inputBg, color: textColor, borderColor: borderColor }}
-                    />
-                  </div>
-
-                  <div className="flex flex-col p-3 sm:p-4 rounded-lg" style={{ backgroundColor: inputBg }}>
-                    <label className="font-medium mb-1 text-center" style={{ color: textColor }}>Description</label>
+                <div className="space-y-4">
+                  <p className="font-semibold">Description:</p>
+                  {editing ? (
                     <textarea
                       name="description"
                       value={tempProfile.description}
                       onChange={handleChange}
-                      rows={4}
-                      className="p-2 rounded-lg border focus:ring-2 outline-none text-center text-sm sm:text-base"
-                      style={{ backgroundColor: inputBg, color: textColor, borderColor: borderColor }}
+                      className="w-full border border-gray-300 rounded-lg p-2"
                     />
-                  </div>
-                </div>
+                  ) : (
+                    <p>{profile.description}</p>
+                  )}
 
-                <div className="flex flex-col sm:flex-row gap-4 mt-4 justify-center">
-                  <button
-                    onClick={handleSave}
-                    className="px-6 py-2 rounded-lg transition text-sm sm:text-base w-full sm:w-auto"
-                    style={{ backgroundColor: "#307A59", color: "#ffffff" }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditing(false)}
-                    className="px-6 py-2 rounded-lg transition text-sm sm:text-base w-full sm:w-auto"
-                    style={{ backgroundColor: "#d1d5db", color: "#242625" }}
-                  >
-                    Cancel
-                  </button>
+                  <p className="font-semibold">Rating:</p>
+                  <p>{profile.rating || "0.0"}</p>
                 </div>
-              </>
-            )}
+              </div>
+            </div>
+          </div>
+
+          {/* Status Card */}
+          <div className="lg:col-span-1">
+            <div
+              className="border-2 rounded-3xl p-8 shadow-2xl transition-all duration-300 text-center"
+              style={{
+                borderColor: "var(--border)",
+                background: "linear-gradient(135deg, var(--button), #02966a)",
+              }}
+            >
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    profile.status === "approved" ? "bg-green-400" : "bg-yellow-400"
+                  }`}
+                >
+                  <span className="text-white text-sm font-bold">
+                    {profile.status === "approved" ? "✓" : "!"}
+                  </span>
+                </div>
+              </div>
+              <h2 className="text-xl font-bold mb-2 text-white">Account Status</h2>
+              <div className="text-2xl font-bold text-white mb-4 capitalize">
+                {profile.status}
+              </div>
+            </div>
           </div>
         </div>
-      </main>
+
+        {/* Personal Info */}
+<div
+              className="border-2 rounded-3xl p-8 shadow-2xl transition-all duration-300 hover:shadow-3xl"
+              style={{
+                borderColor: "var(--border)",
+                background: isDark
+                  ? "linear-gradient(135deg, var(--div), var(--mid-dark))"
+                  : "linear-gradient(135deg, #ffffff, #f7fafc)",
+              }}
+            >
+  <h2 className="text-2xl font-bold mb-6">Personal Info</h2>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div>
+      <p className="font-semibold">Name:</p>
+      <p>{profile.username}</p>
+    </div>
+    <div>
+      <p className="font-semibold">Email:</p>
+      <p>{profile.contact_email}</p>
+    </div>
+    <div>
+      <p className="font-semibold">Phone:</p>
+      <p>{profile.phone}</p>
+    </div>
+  </div>
+</div>
+
+
+        {/* Edit Buttons */}
+        {editing && (
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              onClick={() => setEditing(false)}
+              className="font-semibold px-6 py-2 rounded-xl border-2"
+              style={{
+                backgroundColor: "var(--div)",
+                color: "var(--text)",
+                borderColor: "var(--border)",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="text-white font-semibold px-6 py-2 rounded-xl"
+              style={{ backgroundColor: "var(--button)" }}
+            >
+              Save Changes
+            </button>
+          </div>
+        )}
+
+        {/* Toast */}
+        {toast && (
+          <div
+            className={`fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-white ${
+              toast.type === "success" ? "bg-green-500" : "bg-red-500"
+            }`}
+          >
+            <span className="text-lg">{toast.type === "success" ? "✅" : "⚠️"}</span>
+            <span>{toast.message}</span>
+          </div>
+        )}
+      </div>
 
       {/* Footer */}
       <footer className="w-full mt-auto bg-[var(--footer-bg)]">
         <Footer />
       </footer>
-
-      {/* Toast Notification */}
-      {toast && (
-       <div
-        className={`fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-white ${
-          toast.type === "success" ? "bg-green-500" : "bg-red-500"
-        }`}
-      >
-          <span className="text-lg">{toast.type === "success" ? "✅" : "⚠️"}</span>
-          <span>{toast.message}</span>
-        </div>
-      )}
     </div>
   );
-};
-
-export default VendorProfilePage;
+}

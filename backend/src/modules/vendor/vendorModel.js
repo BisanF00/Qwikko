@@ -192,15 +192,35 @@ exports.updateOrderStatus = async (orderId, status) => {
  */
 exports.getProfile = async (userId) => {
   const query = `
-    SELECT id, user_id, store_name, store_slug, store_logo, store_banner, 
-           description, status, commission_rate, contact_email, phone, 
-           address, social_links, rating, created_at, updated_at, latitude, longitude
-    FROM vendors
-    WHERE user_id = $1
+    SELECT 
+      v.id,
+      v.user_id,
+      v.store_name,
+      v.store_slug,
+      v.store_logo,
+      v.store_banner,
+      v.description,
+      v.status,
+      v.commission_rate,
+      v.contact_email,
+      v.phone,
+      v.address,
+      v.social_links,
+      v.rating,
+      v.created_at,
+      v.updated_at,
+      v.latitude,
+      v.longitude,
+      u.name AS username
+    FROM vendors v
+    JOIN users u ON v.user_id = u.id  -- 🔹 الربط بين الجدولين
+    WHERE v.user_id = $1
   `;
+
   const { rows } = await pool.query(query, [userId]);
   return rows[0];
 };
+
 
 /**
  * Update vendor profile.

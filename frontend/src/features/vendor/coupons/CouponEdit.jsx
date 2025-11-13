@@ -31,18 +31,7 @@ export default function CouponEdit({ coupon, onUpdate, onCancel, isDarkMode }) {
   return (
     <div className="relative">
       {/* زر X لإغلاق التعديل */}
-      <button
-        onClick={onCancel}
-        className="absolute top-0 right-0 p-1 rounded-full transition-all duration-200"
-        style={{
-          color: colors.text,
-          transform: "translate(8px, -49px)",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.hover)}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-      >
-        <X size={18} />
-      </button>
+      
 
       {/* الفورم مباشرة بدون ديف إضافي */}
       <CouponForm

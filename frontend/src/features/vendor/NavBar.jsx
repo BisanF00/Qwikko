@@ -118,16 +118,17 @@ export default function VendorNavbar() {
           {/* 🔔 Notifications */}
           <div className="relative">
             <button
-              onClick={() => setNotificationsOpen((prev) => !prev)}
-              className="relative text-gray-700 hover:text-gray-900"
-            >
-              <FaBell size={22} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+  onClick={() => setNotificationsOpen((prev) => !prev)}
+  className="relative text-gray-700 hover:text-gray-900"
+>
+  <FaBell size={22} />
+  {unreadCount > 0 && (
+    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+      {unreadCount}
+    </span>
+  )}
+</button>
+
 
             {notificationsOpen && (
               <div

@@ -6,7 +6,7 @@ import {
 } from "react-icons/fa";
 
 import { FiChevronDown } from "react-icons/fi";
-import { fetchNotifications, fetchUnreadCount, fetchVendorProfile } from "./VendorAPI2";
+import { fetchNotifications, fetchUnreadCount, fetchVendorProfile , markNotificationsRead } from "./VendorAPI2";
 import ChatBot from "./ChatBot";
 import { Bot, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -250,7 +250,7 @@ export default function VendorLayout() {
       >
         <FaBell size={22} className={isDarkMode ? "text-white" : "text-white"} />
         {unreadCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-black text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
             {unreadCount}
           </span>
         )}
@@ -279,16 +279,25 @@ export default function VendorLayout() {
                                 ? "bg-gray-100 dark:bg-[#444] border-l-4 border-black"
                                 : "border-l-4 border-transparent"
                                 }`}
-                              onClick={() => {
-                                if (!n.read_status) {
-                                  setNotifications((prev) =>
-                                    prev.map((notif) =>
-                                      notif.id === n.id ? { ...notif, read_status: true } : notif
-                                    )
-                                  );
-                                  setUnreadCount((prev) => Math.max(0, prev - 1));
-                                }
-                              }}
+                             onClick={async () => {
+  if (!n.read_status) {
+    try {
+      // أرسل ID للإشعار اللي تم قراءته
+      await markNotificationsRead([n.id]);
+
+      // حدث الحالة محليًا
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === n.id ? { ...notif, read_status: true } : notif
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  }
+}}
+
                             >
                               <div className="flex items-start space-x-3">
                                 <div
