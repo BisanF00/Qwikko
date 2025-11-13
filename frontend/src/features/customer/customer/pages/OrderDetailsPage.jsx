@@ -803,7 +803,7 @@ const handleCheckoutClick = async () => {
                 <h2 className="text-2xl font-bold mb-4 text-green-600 dark:text-green-400 tracking-tight">
                   Order Confirmed!
                 </h2>
-                <div className={`space-y-3 text-left max-w-md mx-auto ${cardClass} rounded-2xl p-5 border shadow-lg backdrop-blur-sm`}>
+                {/* <div className={`space-y-3 text-left max-w-md mx-auto ${cardClass} rounded-2xl p-5 border shadow-lg backdrop-blur-sm`}>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-[var(--light-gray)] flex items-center text-sm">
                       <FiPackage className="mr-2" />
@@ -860,7 +860,7 @@ const handleCheckoutClick = async () => {
                     <FiShoppingCart className="mr-2" />
                     Continue Shopping
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
           ) : (
