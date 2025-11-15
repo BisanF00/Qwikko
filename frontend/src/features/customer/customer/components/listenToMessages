@@ -1,0 +1,24 @@
+import { db } from '../../../../app/firebase';
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+
+const listenToMessages = (user1, user2, callback) => {
+  const chatId = `chat_${[user1, user2].sort().join('_')}`;
+  const messagesRef = collection(db, 'chats', chatId, 'messages');
+  const q = query(messagesRef, orderBy('created_at', 'asc'));
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        created_at: data.created_at?.toMillis ? data.created_at.toMillis() : Date.now()
+      };
+    });
+    callback(messages); 
+  });
+
+  return unsubscribe;
+};
+
+export default listenToMessages;

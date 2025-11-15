@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test FCM</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-app.js";
+    import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-messaging.js";
+    import { onMessage } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-messaging.js";
+
+
+    const firebaseConfig = {
+    apiKey: "AIzaSyDoxvryUVjLKG2iF9rWl-hslQWvVByUEnQ",
+    authDomain: "qwikko-b7ace.firebaseapp.com",
+    projectId: "qwikko-b7ace",
+    storageBucket: "qwikko-b7ace.firebasestorage.app",
+    messagingSenderId: "735557421843",
+    appId: "1:735557421843:web:b8d95d7fdab2ea3bf068e6",
+    measurementId: "G-P3DEB6XKW9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+
+    onMessage(messaging, (payload) => {
+      console.log("Message received. ", payload);
+
+      // عرض Notification مباشرة في الصفحة
+      if (Notification.permission === "granted") {
+        new Notification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: "/favicon.ico" // اختياري
+        });
+      }
+    });
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered:', registration);
+
+          // 3️⃣ تهيئة Messaging بعد تسجيل Service Worker
+          const messaging = getMessaging();
+
+          // 4️⃣ طلب FCM Token
+          getToken(messaging, { 
+            vapidKey: "BLY_cpu5gN9scFU7TMhCd-RMC_meMwCVVry4a97ZPRoDDMYiNztIMRz9i8CEX95_0XNeBk7FMtY0VPyQ-dm2zCU", 
+            serviceWorkerRegistration: registration 
+          })
+          .then((token) => {
+            console.log('FCM Token:', token);
+
+            // 5️⃣ إرسال التوكن للسيرفر
+            fetch("http://localhost:3000/api/users/1/fcm-token", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fcmToken: token }),
+            })
+            .then(() => console.log("Token sent to server"))
+            .catch(err => console.error("Error sending token to server:", err));
+
+          })
+          .catch((err) => console.error('Error getting token:', err));
+
+        })
+        .catch((err) => console.error('Service Worker registration failed:', err));
+    } else {
+      console.error('Service Worker not supported in this browser.');
+    }
+
+  </script>
+</head>
+<body>
+  <h1>Test FCM Token</h1>
+</body>
+</html>
