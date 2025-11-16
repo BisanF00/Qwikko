@@ -12,6 +12,7 @@ const PaymentMethodsPanel = () => {
     paymentMethod: "",
     amount: ""
   });
+  
 
   // Pagination & Filtering
   const [currentPage, setCurrentPage] = useState(1);
