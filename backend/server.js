@@ -44,7 +44,7 @@ app.use(
 );
 
 
-app.options("*", cors({
+app.options("/*", cors({
   origin: ["http://localhost:5173", "https://qwikko.vercel.app"],
   methods: ["GET","POST","PUT","DELETE","PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "Guest-Token"],
