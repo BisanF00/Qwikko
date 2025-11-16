@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPayments, deletePayment } from "../paymentSlice";
-import { ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/outline';
 
 const PaymentMethodsPanel = () => {
   const dispatch = useDispatch();
